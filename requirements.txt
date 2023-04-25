@@ -2,3 +2,6 @@ pydantic[email]
 httpx
 beautifulsoup4
 lxml
+azure-cosmos
+azure-identity
+aiohttp
