@@ -1,2 +1,4 @@
 pydantic[email]
 httpx
+beautifulsoup4
+lxml
