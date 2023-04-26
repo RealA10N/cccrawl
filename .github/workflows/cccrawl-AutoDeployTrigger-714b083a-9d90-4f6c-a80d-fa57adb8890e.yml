@@ -49,12 +49,10 @@ jobs:
           creds: ${{ secrets.CCCRAWL_AZURE_CREDENTIALS }}
 
       - name: "Deploy to Azure Container Instances"
-        uses: "azure/aci-deploy@v1"
-        with:
-          name: cccrawl
-          resource-group: codecoach
-          image: a10n/cccrawl:${{ github.sha }}
-          registry-username: ${{ secrets.CCCRAWL_REGISTRY_USERNAME }}
-          registry-password: ${{ secrets.CCCRAWL_REGISTRY_PASSWORD }}
-          secure-environment-variables: COSMOS_KEY=${{ secrets.COSMOS_KEY }} COSMOS_ENDPOINT=${{ secrets.COSMOS_ENDPOINT }}
-          location: "westeurope"
+        run: >
+          az container create -g codecoach -n cccrawl
+          --image a10n/cccrawl:${{ github.sha }}
+          --restart-policy OnFailure
+          --secure-environment-variables
+          COSMOS_KEY=${{ secrets.COSMOS_KEY }}
+          COSMOS_ENDPOINT=${{ secrets.COSMOS_ENDPOINT }}
