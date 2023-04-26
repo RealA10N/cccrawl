@@ -53,8 +53,8 @@ jobs:
         with:
           name: cccrawl
           resource-group: codecoach
-          dns-name-label: cccrawl
-          image: index.docker.io/a10n/cccrawl:${{ github.sha }}
+          image: a10n/cccrawl:${{ github.sha }}
           registry-username: ${{ secrets.CCCRAWL_REGISTRY_USERNAME }}
           registry-password: ${{ secrets.CCCRAWL_REGISTRY_PASSWORD }}
+          secure-environment-variables: COSMOS_KEY=${{ secrets.COSMOS_KEY }} COSMOS_ENDPOINT=${{ secrets.COSMOS_ENDPOINT }}
           location: "westeurope"
