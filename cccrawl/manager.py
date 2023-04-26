@@ -12,7 +12,7 @@ from cccrawl.models.user import UserConfig
 logger = getLogger(__name__)
 
 ALL_CRAWLERS: list[Type[Crawler]] = [CodeforcesCrawler, CsesCrawler]
-WAIT_BETWEEN_CRAWLS = 5
+WAIT_BETWEEN_CRAWLS = 8
 
 
 class MainCrawler:
