@@ -5,3 +5,4 @@ lxml
 azure-cosmos
 azure-identity
 aiohttp
+python-dotenv
