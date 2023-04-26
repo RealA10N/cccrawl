@@ -57,4 +57,4 @@ jobs:
           image: index.docker.io/a10n/cccrawl:${{ github.sha }}
           registry-username: ${{ secrets.CCCRAWL_REGISTRY_USERNAME }}
           registry-password: ${{ secrets.CCCRAWL_REGISTRY_PASSWORD }}
-          location: "west eu"
+          location: "westeurope"
