@@ -37,5 +37,9 @@ class CosmosDatabase(Database):
             async for item in self._configs_container.read_all_items():
                 yield UserConfig.parse_obj(item)
 
-    async def store_user_solutions(self, user: UserConfig, solutions: set[SolutionUid]):
-        pass
+    async def store_user_solutions(
+        self, user: UserConfig, solutions: set[SolutionUid]
+    ) -> None:
+        await self._solutions_container.upsert_item(
+            body={"id": user.uid, "solutions": list(solutions)}
+        )
