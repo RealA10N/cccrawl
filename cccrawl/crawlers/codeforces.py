@@ -13,6 +13,10 @@ logger = getLogger(__name__)
 class CodeforcesCrawler(Crawler):
     @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
     async def crawl(self, config: UserConfig) -> set[SolutionUid]:
+        if config.codeforces is None:
+            logger.info("No available Codeforces user, skipping.")
+            return set()
+
         logger.info("Started crawling Codeforces user %s", config.codeforces)
         url = (
             f"https://codeforces.com/api/user.status?handle={config.codeforces}&from=1"

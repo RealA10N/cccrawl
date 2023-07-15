@@ -14,6 +14,10 @@ logger = getLogger(__name__)
 class CsesCrawler(Crawler):
     @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
     async def crawl(self, config: UserConfig) -> set[SolutionUid]:
+        if config.cses is None:
+            logger.info("No available CSES user, skipping.")
+            return set()
+
         logger.info("Started crawling CSES user %s", config.cses)
         url = f"https://cses.fi/problemset/user/{config.cses}/"
         response = await self._client.get(url)

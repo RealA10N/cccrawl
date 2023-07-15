@@ -14,8 +14,8 @@ CsesUserNumber = NewType("CsesUserNumber", int)
 class UserConfig(CCBaseModel):
     name: Name
     email: EmailStr
-    codeforces: CodeforcesHandle
-    cses: CsesUserNumber
+    codeforces: CodeforcesHandle | None
+    cses: CsesUserNumber | None
 
     uid: UserUid = None
 
