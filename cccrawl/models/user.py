@@ -19,7 +19,7 @@ class UserConfig(CCBaseModel):
 
     uid: UserUid = None
 
-    @validator("uid", always=True)
+    @validator("uid", always=True, pre=True)
     def uid_validator(cls, v, values) -> UserUid:
         expected = hashlib.sha256(values["email"].encode()).hexdigest()
         if v:
