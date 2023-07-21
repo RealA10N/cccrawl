@@ -2,9 +2,10 @@ from enum import auto
 
 from typing import NewType
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
-from pydantic import HttpUrl, AwareDatetime
+from pydantic import HttpUrl, AwareDatetime, Field
 
-ProblemUid = NewType("ProblemUid", str)
+
+SubmissionUid = NewType("SubmissionUid", str)
 
 
 class SubmissionVerdict(CCBaseEnum):
@@ -17,22 +18,23 @@ class SubmissionVerdict(CCBaseEnum):
     rejected = auto()
 
 
-class Submission(CCBaseModel):
-    """A model that describes a single submission."""
+class CrawledSubmission(CCBaseModel):
+    """A model that describes a single submission, where all information can
+    and should be provided in a single scrape."""
+
+    # A unique string that represents a specific submission for a specific
+    # problem.
+    submission_uid: SubmissionUid
 
     # A unique string that represents the problem.
     # Usually the URL of the problem, or part of it.
     # This should not change if the problem statement or title changes,
     # since this equality of problem UIDs is used to distinguish between
     # problems.
-    problem_uid: ProblemUid
+    problem_url: ProblemUid
 
     # The submission verdict.
     verdict: SubmissionVerdict
-
-    # The first time the scraper scraped the solution.
-    # Should not be changed between scrapes (constant value).
-    first_seen_at: AwareDatetime
 
     # The time in which the solution was submitted at. None if the judge does
     # not provide such information.
@@ -44,3 +46,13 @@ class Submission(CCBaseModel):
 
     # A URL pointing to a raw text file with the submission source code.
     raw_code_url: HttpUrl | None
+
+
+class Submission(CCBaseModel):
+    """A model that describes a single submission fully. This model expends the
+    'crawled' submission model with information about the submission that
+    require some context and can not be obtained in a single scrape."""
+
+    # The first time the scraper scraped the solution.
+    # Should not be changed between scrapes (constant value).
+    first_seen_at: AwareDatetime
