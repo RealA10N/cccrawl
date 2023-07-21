@@ -25,10 +25,6 @@ class CrawledSubmission(CCBaseModel):
     problem_url: HttpUrl
     verdict: SubmissionVerdict
 
-    # A unique string that represents a specific submission for a specific
-    # problem.
-    submission_uid: SubmissionUid
-
     # The time in which the solution was submitted at. None if the judge does
     # not provide such information.
     submitted_at: AwareDatetime | None
