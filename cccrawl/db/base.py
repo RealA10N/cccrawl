@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator
 
-from cccrawl.models.submission import ProblemUid
+from cccrawl.models.submission import Submission
 from cccrawl.models.user import UserConfig
 
 
