@@ -5,7 +5,7 @@ from typing import Type
 
 from httpx import AsyncClient
 
-from cccrawl.models.solution import SolutionUid
+from cccrawl.models.submission import Submission, SubmissionVerdict, ProblemUid
 from cccrawl.models.user import UserConfig
 
 logger = getLogger(__name__)
@@ -16,9 +16,11 @@ class Crawler(ABC):
         self._client = client
 
     @abstractmethod
-    async def crawl(self, config: UserConfig) -> set[SolutionUid]:
-        """Given the configuration of the user, crawl it's solutions are
-        return their unique ids."""
+    async def crawl(
+        self, config: UserConfig, submissions: list[Submission]
+    ) -> list[Submission]:
+        """Given the configuration of the user, and all submissions that already
+        have been crawled, returns a list of new submissions of the user."""
 
 
 def retry(exception: Type[Exception], start_sleep: int = 5, fail_factor: float = 2):
