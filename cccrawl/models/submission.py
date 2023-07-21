@@ -2,13 +2,13 @@ from enum import auto
 
 from typing import NewType
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
-from pydantic import HttpUrl, AwareDatetime, Field
+from pydantic import HttpUrl, AwareDatetime
 
 
 SubmissionUid = NewType("SubmissionUid", str)
 
 
-class SubmissionVerdict(CCBaseEnum):
+class SubmissionVerdict(CCBaseStrEnum):
     """An enum representing possible submission verdicts.
     Currently we only support a boolean verdict (accepted or not accepted),
     since there are some judges (like CSES) where it is hard (and even)
@@ -22,19 +22,12 @@ class CrawledSubmission(CCBaseModel):
     """A model that describes a single submission, where all information can
     and should be provided in a single scrape."""
 
+    problem_url: HttpUrl
+    verdict: SubmissionVerdict
+
     # A unique string that represents a specific submission for a specific
     # problem.
     submission_uid: SubmissionUid
-
-    # A unique string that represents the problem.
-    # Usually the URL of the problem, or part of it.
-    # This should not change if the problem statement or title changes,
-    # since this equality of problem UIDs is used to distinguish between
-    # problems.
-    problem_url: ProblemUid
-
-    # The submission verdict.
-    verdict: SubmissionVerdict
 
     # The time in which the solution was submitted at. None if the judge does
     # not provide such information.
