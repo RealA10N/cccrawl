@@ -27,6 +27,9 @@ class Submission(CCBaseModel):
     # problems.
     problem_uid: ProblemUid
 
+    # The submission verdict.
+    verdict: SubmissionVerdict
+
     # The first time the scraper scraped the solution.
     # Should not be changed between scrapes (constant value).
     first_seen_at: AwareDatetime
