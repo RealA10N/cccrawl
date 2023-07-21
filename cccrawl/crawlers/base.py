@@ -1,7 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Iterable
 
 from httpx import AsyncClient
 
@@ -16,7 +15,7 @@ class Crawler(ABC):
         self._client = client
 
     @abstractmethod
-    async def crawl(self, config: UserConfig) -> Iterable[CrawledSubmission]:
+    async def crawl(self, config: UserConfig) -> list[CrawledSubmission]:
         """Given the configuration of the user, returns a list of all
         submissions of the user."""
 
