@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from enum import auto
+from typing import NewType, TypeVar
 
-from typing import NewType
+from pydantic import AwareDatetime, HttpUrl
+
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
-from pydantic import HttpUrl, AwareDatetime
-
 
 SubmissionUid = NewType("SubmissionUid", str)
 
@@ -37,7 +38,10 @@ class CrawledSubmission(CCBaseModel):
     raw_code_url: HttpUrl | None = None
 
 
-class Submission(CCBaseModel):
+SubmissionT = TypeVar("SubmissionT", bound="Submission")
+
+
+class Submission(CrawledSubmission):
     """A model that describes a single submission fully. This model expends the
     'crawled' submission model with information about the submission that
     require some context and can not be obtained in a single scrape."""
@@ -45,3 +49,13 @@ class Submission(CCBaseModel):
     # The first time the scraper scraped the solution.
     # Should not be changed between scrapes (constant value).
     first_seen_at: AwareDatetime
+
+    @classmethod
+    def from_crawled(
+        cls: type[SubmissionT],
+        crawled_submission: CrawledSubmission,
+    ) -> SubmissionT:
+        return cls(
+            **crawled_submission.model_dump(),
+            first_seen_at=datetime.now(tz=timezone.utc)
+        )
