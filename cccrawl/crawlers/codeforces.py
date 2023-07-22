@@ -3,6 +3,7 @@ from logging import getLogger
 from typing import Any
 
 from httpx import HTTPError
+from pydantic import HttpUrl
 
 from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
@@ -34,7 +35,7 @@ class CodeforcesCrawler(Crawler):
         submissions = response.json().get("result", [])
         return [
             CrawledSubmission(
-                problem_url=self._generate_problem_url(sub["problem"]),
+                problem_url=self._get_problem_url(sub["problem"]),
                 verdict=(
                     SubmissionVerdict.accepted
                     if sub["verdict"] == "OK"
@@ -43,14 +44,41 @@ class CodeforcesCrawler(Crawler):
                 submitted_at=datetime.fromtimestamp(
                     sub["creationTimeSeconds"], tz=timezone.utc
                 ),
+                submission_url=self._get_submission_url(submission=sub),
             )
             for sub in submissions
         ]
 
-    @staticmethod
-    def _generate_problem_url(problem: dict[str, Any]) -> str:
-        contest_id = int(problem["contestId"])
-        problem_id = problem["index"]
-        contest_type = "gym" if contest_id > 100_000 else "contest"
+    @classmethod
+    def _get_contest_id(cls, problem: dict[str, Any]) -> int:
+        return int(problem["contestId"])
+
+    @classmethod
+    def _get_contest_type(cls, problem: dict[str, Any]) -> str:
+        contest_id = cls._get_contest_id(problem)
+        return "gym" if contest_id > 100_000 else "contest"
+
+    @classmethod
+    def _get_problem_id(cls, problem: dict[str, Any]) -> str:
+        return problem["index"]
+
+    @classmethod
+    def _get_problem_url(cls, problem: dict[str, Any]) -> HttpUrl:
+        contest_id = cls._get_contest_id(problem)
+        problem_id = cls._get_problem_id(problem)
+        contest_type = cls._get_contest_type(problem)
         url = f"https://codeforces.com/{contest_type}/{contest_id}/problem/{problem_id}"
-        return url
+        return HttpUrl(url)
+
+    @classmethod
+    def _get_submission_id(cls, submission: dict[str, Any]) -> str:
+        return submission["id"]
+
+    @classmethod
+    def _get_submission_url(cls, submission: dict[str, Any]) -> HttpUrl:
+        problem = submission["problem"]
+        contest_type = cls._get_contest_type(problem=problem)
+        contest_id = cls._get_contest_id(problem=problem)
+        submission_id = cls._get_submission_id(submission=submission)
+        url = f"https://codeforces.com/{contest_type}/{contest_id}/submission/{submission_id}"
+        return HttpUrl(url)
