@@ -6,6 +6,7 @@ from pydantic import AwareDatetime, HttpUrl
 
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
 from cccrawl.models.integration import IntegrationId
+from cccrawl.models.user import UserUid
 
 SubmissionUid = NewType("SubmissionUid", str)
 
@@ -63,5 +64,6 @@ class Submission(CrawledSubmission):
 
 
 class UserSubmissions(CCBaseModel):
+    id: UserUid
     last_update: AwareDatetime
     submissions: dict[IntegrationId, list[Submission]]
