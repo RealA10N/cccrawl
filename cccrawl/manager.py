@@ -49,7 +49,8 @@ class MainCrawler:
             all_submissions, old_submissions
         )
 
-        return old_submissions + new_submissions
+        all_submissions = old_submissions + new_submissions
+        await self._db.overwrite_user_submissions(user, all_submissions)
 
     async def crawl(self) -> None:
         async for user in self._db.generate_users():
@@ -72,4 +73,21 @@ class MainCrawler:
         previously crawled submissions, filters out all submissions that
         already have been crawled, and returns only the list of new
         submissions."""
-        raise NotImplementedError()
+
+        # TODO: change this behavior. We currently distinguish between
+        # submissions by their PROBLEM urls, which means that there must
+        # exist at most one submission per problem, which is not general
+        # enough.
+
+        old_problem_urls = {submission.problem_url for submission in old_submissions}
+
+        new_crawled_submissions = [
+            submission
+            for submission in all_submissions
+            if submission.problem_url not in old_problem_urls
+        ]
+
+        return [
+            Submission.from_crawled(crawled_submission)
+            for crawled_submission in new_crawled_submissions
+        ]
