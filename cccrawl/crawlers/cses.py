@@ -14,7 +14,7 @@ logger = getLogger(__name__)
 class CsesCrawler(Crawler):
     @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
     async def crawl(self, config: UserConfig) -> list[CrawledSubmission]:
-        if handle := config.cses is None:
+        if (handle := config.cses) is None:
             logger.info("No available CSES user, skipping.")
             return list()
 
