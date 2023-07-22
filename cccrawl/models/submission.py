@@ -1,12 +1,12 @@
-from datetime import datetime, timezone
 from enum import auto
 from typing import NewType, TypeVar
 
-from pydantic import AwareDatetime, HttpUrl
+from pydantic import AwareDatetime, Field, HttpUrl
 
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
 from cccrawl.models.integration import IntegrationId
 from cccrawl.models.user import UserUid
+from cccrawl.utils import current_datetime
 
 SubmissionUid = NewType("SubmissionUid", str)
 
@@ -59,11 +59,11 @@ class Submission(CrawledSubmission):
     ) -> SubmissionT:
         return cls(
             **crawled_submission.model_dump(),
-            first_seen_at=datetime.now(tz=timezone.utc)
+            first_seen_at=current_datetime(),
         )
 
 
 class UserSubmissions(CCBaseModel):
     id: UserUid
-    last_update: AwareDatetime
     submissions: dict[IntegrationId, list[Submission]]
+    last_update: AwareDatetime = Field(default_factory=current_datetime)
