@@ -64,6 +64,8 @@ class Submission(CrawledSubmission):
 
 
 class UserSubmissions(CCBaseModel):
+    """A model containing all submissions of a given user."""
+
     id: UserUid
     submissions: dict[IntegrationId, list[Submission]]
     last_update: AwareDatetime = Field(default_factory=current_datetime)
