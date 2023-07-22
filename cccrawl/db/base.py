@@ -16,7 +16,9 @@ class Database(ABC):
         registered users should be added at some point."""
 
     @abstractmethod
-    async def overwrite_user_submissions(self, submissions: UserSubmissions) -> None:
+    async def overwrite_user_submissions(
+        self, submissions: UserSubmissions
+    ) -> None:
         """Overwrite the existing submissions set of the given user with the
         given one in the database."""
 

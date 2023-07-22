@@ -5,7 +5,11 @@ from httpx import AsyncClient
 
 from cccrawl.crawlers import CodeforcesCrawler, Crawler, CsesCrawler
 from cccrawl.db.base import Database
-from cccrawl.models.submission import CrawledSubmission, Submission, UserSubmissions
+from cccrawl.models.submission import (
+    CrawledSubmission,
+    Submission,
+    UserSubmissions,
+)
 from cccrawl.models.user import UserConfig
 from cccrawl.utils import current_datetime
 
@@ -41,8 +45,12 @@ class MainCrawler:
     async def crawl_user_and_update_db(self, user: UserConfig) -> None:
         async with asyncio.TaskGroup() as tg:
             tg.create_task(asyncio.sleep(WAIT_BETWEEN_CRAWLS))
-            all_submissions_task = tg.create_task(self.crawl_user_submissions(user))
-            old_submissions_task = tg.create_task(self._db.get_user_submissions(user))
+            all_submissions_task = tg.create_task(
+                self.crawl_user_submissions(user)
+            )
+            old_submissions_task = tg.create_task(
+                self._db.get_user_submissions(user)
+            )
 
         all_submissions = all_submissions_task.result()
         old_submissions = old_submissions_task.result()
@@ -80,7 +88,8 @@ class MainCrawler:
         # enough.
 
         old_problem_urls = {
-            submission.problem_url for submission in old_user_submissions.submissions
+            submission.problem_url
+            for submission in old_user_submissions.submissions
         }
 
         new_submissions = [

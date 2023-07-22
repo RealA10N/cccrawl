@@ -28,7 +28,9 @@ class CosmosDatabase(Database):
 
         return cls(users_db, configs_container, submissions_container)
 
-    def __init__(self, users_db, configs_container, submissions_container) -> None:
+    def __init__(
+        self, users_db, configs_container, submissions_container
+    ) -> None:
         self._users_db = users_db
         self._configs_container = configs_container
         self._submissions_container = submissions_container
@@ -38,7 +40,9 @@ class CosmosDatabase(Database):
             async for item in self._configs_container.read_all_items():
                 yield UserConfig.model_validate(item)
 
-    async def overwrite_user_submissions(self, submissions: UserSubmissions) -> None:
+    async def overwrite_user_submissions(
+        self, submissions: UserSubmissions
+    ) -> None:
         body = submissions.model_dump(mode="json")
         await self._submissions_container.upsert_item(body=body)
 
