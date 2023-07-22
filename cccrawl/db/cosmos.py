@@ -1,10 +1,10 @@
-from typing import AsyncGenerator, Type, TypeVar
+from typing import Any, AsyncGenerator, Type, TypeVar
 
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import CosmosClient
 
 from cccrawl.db.base import Database
-from cccrawl.models.solution import SolutionUid
+from cccrawl.models.submission import Submission
 from cccrawl.models.user import UserConfig
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
@@ -35,11 +35,29 @@ class CosmosDatabase(Database):
     async def generate_users(self) -> AsyncGenerator[UserConfig, None]:
         while True:
             async for item in self._configs_container.read_all_items():
-                yield UserConfig.parse_obj(item)
+                yield UserConfig.model_validate(item)
 
-    async def store_user_solutions(
-        self, user: UserConfig, solutions: set[SolutionUid]
+    async def overwrite_user_submissions(
+        self,
+        user: UserConfig,
+        submissions: list[Submission],
     ) -> None:
-        await self._solutions_container.upsert_item(
-            body={"id": user.uid, "solutions": list(solutions)}
+        body = {
+            "id": user.uid,
+            "submissions": [
+                submission.model_dump(mode="json") for submission in submissions
+            ],
+        }
+        await self._solutions_container.upsert_item(body=body)
+
+    async def get_user_submissions(self, user: UserConfig) -> list[Submission]:
+        submissions_doc: dict[str, Any] = await self._solutions_container.read_item(
+            user.uid, partition_key=user.uid
         )
+
+        submissions = [
+            Submission.model_validate(submission)
+            for submission in submissions_doc.get("submissions", [])
+        ]
+
+        return submissions
