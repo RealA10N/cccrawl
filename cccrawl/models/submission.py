@@ -5,6 +5,7 @@ from typing import NewType, TypeVar
 from pydantic import AwareDatetime, HttpUrl
 
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
+from cccrawl.models.integration import IntegrationId
 
 SubmissionUid = NewType("SubmissionUid", str)
 
@@ -59,3 +60,8 @@ class Submission(CrawledSubmission):
             **crawled_submission.model_dump(),
             first_seen_at=datetime.now(tz=timezone.utc)
         )
+
+
+class UserSubmissions(CCBaseModel):
+    last_update: AwareDatetime
+    submissions: dict[IntegrationId, list[Submission]]
