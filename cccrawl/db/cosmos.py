@@ -5,7 +5,7 @@ from azure.cosmos.aio import CosmosClient
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 from cccrawl.db.base import Database
-from cccrawl.models.submission import Submission
+from cccrawl.models.submission import Submission, UserSubmissions
 from cccrawl.models.user import UserConfig
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
@@ -38,20 +38,11 @@ class CosmosDatabase(Database):
             async for item in self._configs_container.read_all_items():
                 yield UserConfig.model_validate(item)
 
-    async def overwrite_user_submissions(
-        self,
-        user: UserConfig,
-        submissions: list[Submission],
-    ) -> None:
-        body = {
-            "id": user.uid,
-            "submissions": [
-                submission.model_dump(mode="json") for submission in submissions
-            ],
-        }
+    async def overwrite_user_submissions(self, submissions: UserSubmissions) -> None:
+        body = submissions.model_dump(mode="json")
         await self._submissions_container.upsert_item(body=body)
 
-    async def get_user_submissions(self, user: UserConfig) -> list[Submission]:
+    async def get_user_submissions(self, user: UserConfig) -> UserSubmissions:
         try:
             submissions_doc: dict[
                 str, Any
@@ -59,11 +50,6 @@ class CosmosDatabase(Database):
                 user.uid, partition_key=user.uid
             )
         except CosmosResourceNotFoundError:
-            return list()
+            return UserSubmissions(id=user.uid)
 
-        submissions = [
-            Submission.model_validate(submission)
-            for submission in submissions_doc.get("submissions", [])
-        ]
-
-        return submissions
+        return UserSubmissions.model_validate(submissions_doc)

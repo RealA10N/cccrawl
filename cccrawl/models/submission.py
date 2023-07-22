@@ -67,5 +67,5 @@ class UserSubmissions(CCBaseModel):
     """A model containing all submissions of a given user."""
 
     id: UserUid
-    submissions: dict[IntegrationId, list[Submission]]
+    submissions: dict[IntegrationId, list[Submission]] = Field(default_factory=list)
     last_update: AwareDatetime = Field(default_factory=current_datetime)

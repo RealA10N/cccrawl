@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator
 
-from cccrawl.models.submission import Submission
+from cccrawl.models.submission import UserSubmissions
 from cccrawl.models.user import UserConfig
 
 
@@ -16,15 +16,11 @@ class Database(ABC):
         registered users should be added at some point."""
 
     @abstractmethod
-    async def overwrite_user_submissions(
-        self,
-        user: UserConfig,
-        submissions: list[Submission],
-    ) -> None:
+    async def overwrite_user_submissions(self, submissions: UserSubmissions) -> None:
         """Overwrite the existing submissions set of the given user with the
         given one in the database."""
 
     @abstractmethod
-    async def get_user_submissions(self, user: UserConfig) -> list[Submission]:
+    async def get_user_submissions(self, user: UserConfig) -> UserSubmissions:
         """Retrieve list of previously scraped submissions for the provided
         user."""
