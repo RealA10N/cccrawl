@@ -1,6 +1,6 @@
-from typing import Any
-
+from datetime import datetime, timezone
 from logging import getLogger
+from typing import Any
 
 from httpx import HTTPError
 
@@ -39,6 +39,9 @@ class CodeforcesCrawler(Crawler):
                     SubmissionVerdict.accepted
                     if sub["verdict"] == "OK"
                     else SubmissionVerdict.rejected
+                ),
+                submitted_at=datetime.fromtimestamp(
+                    sub["creationTimeSeconds"], tz=timezone.utc
                 ),
             )
             for sub in submissions
