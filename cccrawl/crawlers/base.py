@@ -1,11 +1,10 @@
 import asyncio
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Type
 
 from httpx import AsyncClient
 
-from cccrawl.models.solution import SolutionUid
+from cccrawl.models.submission import CrawledSubmission
 from cccrawl.models.user import UserConfig
 
 logger = getLogger(__name__)
@@ -16,12 +15,16 @@ class Crawler(ABC):
         self._client = client
 
     @abstractmethod
-    async def crawl(self, config: UserConfig) -> set[SolutionUid]:
-        """Given the configuration of the user, crawl it's solutions are
-        return their unique ids."""
+    async def crawl(self, config: UserConfig) -> list[CrawledSubmission]:
+        """Given the configuration of the user, returns a list of all
+        submissions of the user."""
 
 
-def retry(exception: Type[Exception], start_sleep: int = 5, fail_factor: float = 2):
+def retry(
+    exception: type[Exception],
+    start_sleep: int = 5,
+    fail_factor: float = 2,
+):
     def decorator(func):
         async def retry_func(*args, **kwargs):
             sleep = start_sleep

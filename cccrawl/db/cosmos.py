@@ -1,10 +1,11 @@
-from typing import AsyncGenerator, Type, TypeVar
+from typing import Any, AsyncGenerator, Type, TypeVar
 
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import CosmosClient
+from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 from cccrawl.db.base import Database
-from cccrawl.models.solution import SolutionUid
+from cccrawl.models.submission import UserSubmissions
 from cccrawl.models.user import UserConfig
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
@@ -21,25 +22,38 @@ class CosmosDatabase(Database):
             "configs", partition_key=PartitionKey("/id")
         )
 
-        solutions_container = await users_db.create_container_if_not_exists(
-            "solutions", partition_key=PartitionKey("/id")
+        submissions_container = await users_db.create_container_if_not_exists(
+            "submissions", partition_key=PartitionKey("/id")
         )
 
-        return cls(users_db, configs_container, solutions_container)
+        return cls(users_db, configs_container, submissions_container)
 
-    def __init__(self, users_db, configs_container, solutions_container) -> None:
+    def __init__(
+        self, users_db, configs_container, submissions_container
+    ) -> None:
         self._users_db = users_db
         self._configs_container = configs_container
-        self._solutions_container = solutions_container
+        self._submissions_container = submissions_container
 
     async def generate_users(self) -> AsyncGenerator[UserConfig, None]:
         while True:
             async for item in self._configs_container.read_all_items():
-                yield UserConfig.parse_obj(item)
+                yield UserConfig.model_validate(item)
 
-    async def store_user_solutions(
-        self, user: UserConfig, solutions: set[SolutionUid]
+    async def overwrite_user_submissions(
+        self, submissions: UserSubmissions
     ) -> None:
-        await self._solutions_container.upsert_item(
-            body={"id": user.uid, "solutions": list(solutions)}
-        )
+        body = submissions.model_dump(mode="json")
+        await self._submissions_container.upsert_item(body=body)
+
+    async def get_user_submissions(self, user: UserConfig) -> UserSubmissions:
+        try:
+            submissions_doc: dict[
+                str, Any
+            ] = await self._submissions_container.read_item(
+                user.uid, partition_key=user.uid
+            )
+        except CosmosResourceNotFoundError:
+            return UserSubmissions(id=user.uid)
+
+        return UserSubmissions.model_validate(submissions_doc)
