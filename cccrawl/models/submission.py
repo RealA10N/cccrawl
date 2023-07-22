@@ -27,14 +27,14 @@ class CrawledSubmission(CCBaseModel):
 
     # The time in which the solution was submitted at. None if the judge does
     # not provide such information.
-    submitted_at: AwareDatetime | None
+    submitted_at: AwareDatetime | None = None
 
     # A URL pointing to a webpage of the judge, which contains the solution,
     # source code, verdict, etc. (if exists)
-    submission_url: HttpUrl | None
+    submission_url: HttpUrl | None = None
 
     # A URL pointing to a raw text file with the submission source code.
-    raw_code_url: HttpUrl | None
+    raw_code_url: HttpUrl | None = None
 
 
 class Submission(CCBaseModel):
