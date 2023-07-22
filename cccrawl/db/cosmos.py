@@ -5,7 +5,7 @@ from azure.cosmos.aio import CosmosClient
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 from cccrawl.db.base import Database
-from cccrawl.models.submission import Submission, UserSubmissions
+from cccrawl.models.submission import UserSubmissions
 from cccrawl.models.user import UserConfig
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
