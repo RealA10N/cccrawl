@@ -5,8 +5,9 @@ from httpx import AsyncClient
 
 from cccrawl.crawlers import CodeforcesCrawler, Crawler, CsesCrawler
 from cccrawl.db.base import Database
-from cccrawl.models.submission import CrawledSubmission, Submission
+from cccrawl.models.submission import CrawledSubmission, Submission, UserSubmissions
 from cccrawl.models.user import UserConfig
+from cccrawl.utils import current_datetime
 
 logger = getLogger(__name__)
 
@@ -45,12 +46,11 @@ class MainCrawler:
 
         all_submissions = all_submissions_task.result()
         old_submissions = old_submissions_task.result()
-        new_submissions = self._generate_new_submissions(
+        user_submissions = self._construct_user_submissions_model(
             all_submissions, old_submissions
         )
 
-        all_submissions = old_submissions + new_submissions
-        await self._db.overwrite_user_submissions(user, all_submissions)
+        await self._db.overwrite_user_submissions(user_submissions)
 
     async def crawl(self) -> None:
         async for user in self._db.generate_users():
@@ -64,30 +64,33 @@ class MainCrawler:
                 )
 
     @classmethod
-    def _generate_new_submissions(
+    def _construct_user_submissions_model(
         cls,
-        all_submissions: list[CrawledSubmission],
-        old_submissions: list[Submission],
-    ) -> list[Submission]:
+        crawled_submissions: list[CrawledSubmission],
+        old_user_submissions: UserSubmissions,
+    ) -> UserSubmissions:
         """Receives a list of newly crawled submissions and the list of
         previously crawled submissions, filters out all submissions that
-        already have been crawled, and returns only the list of new
-        submissions."""
+        already have been crawled, and returns the new, updated, user
+        submissions model."""
 
         # TODO: change this behavior. We currently distinguish between
         # submissions by their PROBLEM urls, which means that there must
         # exist at most one submission per problem, which is not general
         # enough.
 
-        old_problem_urls = {submission.problem_url for submission in old_submissions}
+        old_problem_urls = {
+            submission.problem_url for submission in old_user_submissions.submissions
+        }
 
-        new_crawled_submissions = [
-            submission
-            for submission in all_submissions
-            if submission.problem_url not in old_problem_urls
-        ]
-
-        return [
+        new_submissions = [
             Submission.from_crawled(crawled_submission)
-            for crawled_submission in new_crawled_submissions
+            for crawled_submission in crawled_submissions
+            if crawled_submission.problem_url not in old_problem_urls
         ]
+
+        return UserSubmissions(
+            id=old_user_submissions.id,
+            submissions=old_user_submissions.submissions + new_submissions,
+            last_update=current_datetime(),
+        )
