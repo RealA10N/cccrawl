@@ -1,7 +1,7 @@
 import hashlib
 from typing import NewType
 
-from pydantic import EmailStr, validator
+from pydantic import EmailStr, computed_field
 
 from cccrawl.models.base import CCBaseModel
 
@@ -17,11 +17,7 @@ class UserConfig(CCBaseModel):
     codeforces: CodeforcesHandle | None
     cses: CsesUserNumber | None
 
-    uid: UserUid = None
-
-    @validator("uid", always=True, pre=True)
-    def uid_validator(cls, v, values) -> UserUid:
-        expected = hashlib.sha256(values["email"].encode()).hexdigest()
-        if v:
-            assert v == expected
-        return expected
+    @computed_field
+    @property
+    def uid(self) -> UserUid:
+        return UserUid(hashlib.sha256(self.email.encode()).hexdigest())

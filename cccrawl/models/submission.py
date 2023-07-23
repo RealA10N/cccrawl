@@ -1,7 +1,8 @@
+import hashlib
 from enum import auto
 from typing import NewType, TypeVar
 
-from pydantic import AwareDatetime, Field, HttpUrl
+from pydantic import AwareDatetime, Field, HttpUrl, computed_field
 
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
 from cccrawl.models.integration import IntegrationId
@@ -38,6 +39,14 @@ class CrawledSubmission(CCBaseModel):
 
     # A URL pointing to a raw text file with the submission source code.
     raw_code_url: HttpUrl | None = None
+
+    @computed_field()
+    @property
+    def uid(self) -> SubmissionUid:
+        hash = hashlib.sha256()
+        for token in (self.problem_url, self.verdict):
+            hash.update(str(token).encode())
+        return SubmissionUid(hash.hexdigest())
 
 
 SubmissionT = TypeVar("SubmissionT", bound="Submission")
