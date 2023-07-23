@@ -44,7 +44,7 @@ class CrawledSubmission(CCBaseModel):
     @property
     def uid(self) -> SubmissionUid:
         hash = hashlib.sha256()
-        for token in (self.problem_url, self.verdict):
+        for token in (self.problem_url, self.verdict, self.submitted_at):
             hash.update(str(token).encode())
         return SubmissionUid(hash.hexdigest())
 
