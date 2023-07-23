@@ -87,15 +87,14 @@ class MainCrawler:
         # exist at most one submission per problem, which is not general
         # enough.
 
-        old_problem_urls = {
-            submission.problem_url
-            for submission in old_user_submissions.submissions
+        old_submission_uids = {
+            submission.uid for submission in old_user_submissions.submissions
         }
 
         new_submissions = [
             Submission.from_crawled(crawled_submission)
             for crawled_submission in crawled_submissions
-            if crawled_submission.problem_url not in old_problem_urls
+            if crawled_submission.uid not in old_submission_uids
         ]
 
         return UserSubmissions(
