@@ -1,15 +1,29 @@
 from logging import getLogger
+from typing import Literal
 
 from bs4 import BeautifulSoup
 from httpx import HTTPError
+from pydantic import computed_field, conint
 
 from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
-from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
+from cccrawl.models.base import ModelUid
+from cccrawl.models.integration import Integration, Platform
 from cccrawl.models.problem import Problem
+from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
 from cccrawl.models.user import UserConfig
 
 logger = getLogger(__name__)
+
+
+class CsesIntegration(Integration):
+    platform: Literal[Platform.cses]
+    user_number: conint(strict=True, gt=0, le=10_000_000)
+
+    @computed_field
+    @property
+    def uid(self) -> ModelUid:
+        return ModelUid(self._hash_tokens(self.platform.value, self.user_number))
 
 
 class CsesCrawler(Crawler):

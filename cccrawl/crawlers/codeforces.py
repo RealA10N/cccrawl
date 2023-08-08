@@ -1,17 +1,29 @@
 from datetime import datetime, timezone
 from logging import getLogger
-from typing import Any
+from typing import Any, Literal
 
 from httpx import HTTPError
-from pydantic import HttpUrl
+from pydantic import HttpUrl, computed_field, constr
 
 from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
-from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
+from cccrawl.models.base import ModelUid
+from cccrawl.models.integration import Integration, Platform
 from cccrawl.models.problem import Problem
+from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
 from cccrawl.models.user import UserConfig
 
 logger = getLogger(__name__)
+
+
+class CodeforcesIntegration(Integration):
+    platform: Literal[Platform.codeforces]
+    handle: constr(to_lower=True, min_length=3, max_length=30)
+
+    @computed_field
+    @property
+    def uid(self) -> ModelUid:
+        return ModelUid(self._hash_tokens(self.platform.value, self.handle))
 
 
 class CodeforcesCrawler(Crawler):
