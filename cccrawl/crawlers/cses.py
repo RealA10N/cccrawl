@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from httpx import HTTPError
 from pydantic import computed_field, conint
 
-from cccrawl.crawlers.base import Crawler, retry
+from cccrawl.crawlers.base import CrawledSubmissionsGenerator, Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.models.base import ModelUid
 from cccrawl.models.integration import Integration, Platform
@@ -26,12 +26,12 @@ class CsesIntegration(Integration):
         return ModelUid(self._hash_tokens(self.platform.value, self.user_number))
 
 
-class CsesCrawler(Crawler):
+class CsesCrawler(Crawler[CsesIntegration]):
     @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
-    async def crawl(self, config: UserConfig) -> list[CrawledSubmission]:
-        if (handle := config.cses) is None:
+    async def crawl(self, integration: CsesIntegration) -> CrawledSubmissionsGenerator:
+        if (handle := integration.user_number) is None:
             logger.info("No available CSES user, skipping.")
-            return list()
+            return
 
         logger.info("Started crawling CSES user '%s'", handle)
         url = f"https://cses.fi/problemset/user/{handle}/"
@@ -42,10 +42,9 @@ class CsesCrawler(Crawler):
         if table is None:
             raise CrawlerError(f"CSES user '{handle}' does not exist")
         solved_tags = table.find_all("a", {"class": "full"})
-        return [
-            CrawledSubmission(
+
+        for a_tag in solved_tags:
+            yield CrawledSubmission(
                 problem=Problem(problem_url="https://cses.fi" + a_tag["href"][:-1]),
                 verdict=SubmissionVerdict.accepted,
             )
-            for a_tag in solved_tags
-        ]

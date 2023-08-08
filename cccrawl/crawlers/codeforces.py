@@ -5,7 +5,7 @@ from typing import Any, Literal
 from httpx import HTTPError
 from pydantic import HttpUrl, computed_field, constr
 
-from cccrawl.crawlers.base import Crawler, retry
+from cccrawl.crawlers.base import CrawledSubmissionsGenerator, Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.models.base import ModelUid
 from cccrawl.models.integration import Integration, Platform
@@ -26,12 +26,14 @@ class CodeforcesIntegration(Integration):
         return ModelUid(self._hash_tokens(self.platform.value, self.handle))
 
 
-class CodeforcesCrawler(Crawler):
+class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
     @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
-    async def crawl(self, config: UserConfig) -> list[CrawledSubmission]:
-        if (handle := config.codeforces) is None:
+    async def crawl(
+        self, integration: CodeforcesIntegration
+    ) -> CrawledSubmissionsGenerator:
+        if (handle := integration.handle) is None:
             logger.info("No available Codeforces user, skipping.")
-            return list()
+            return
 
         logger.info("Started crawling Codeforces handle '%s'", handle)
         url = f"https://codeforces.com/api/user.status?handle={handle}&from=1"
@@ -46,8 +48,8 @@ class CodeforcesCrawler(Crawler):
         response.raise_for_status()
 
         submissions = response.json().get("result", [])
-        return [
-            CrawledSubmission(
+        for sub in submissions:
+            yield CrawledSubmission(
                 problem=Problem(problem_url=self._get_problem_url(sub["problem"])),
                 verdict=(
                     SubmissionVerdict.accepted
@@ -59,8 +61,6 @@ class CodeforcesCrawler(Crawler):
                 ),
                 submission_url=self._get_submission_url(submission=sub),
             )
-            for sub in submissions
-        ]
 
     @classmethod
     def _get_contest_id(cls, problem: dict[str, Any]) -> int:
