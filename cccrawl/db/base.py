@@ -20,11 +20,12 @@ class Database(ABC):
         newly registered users should be added at some point."""
 
     @abstractmethod
-    async def update_integration_submissions(
-        self, integration: Integration, submissions: SubmissionsGenerator
+    async def upsert_submission(
+        self, integration: Integration, submission: Submission
     ) -> None:
-        """Overwrite the existing submissions set of the given integration with
-        the given one in the database."""
+        """Insert a new submission to the database, or update an existing
+        submission entry if a submisson with the same unique id already exists
+        in the database."""
 
     @abstractmethod
     async def get_submissions_by_integration(

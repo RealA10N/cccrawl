@@ -1,7 +1,7 @@
 import asyncio
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import AsyncGenerator, Generic, TypeAlias, TypeVar
+from typing import AsyncGenerator, Generic, TypeAlias, TypeVar, Any
 
 from httpx import AsyncClient
 
@@ -10,7 +10,6 @@ from cccrawl.models.submission import CrawledSubmission
 
 CrawledSubmissionsGenerator: TypeAlias = AsyncGenerator[CrawledSubmission, None]
 IntegrationT = TypeVar("IntegrationT", bound=Integration)
-
 
 logger = getLogger(__name__)
 
@@ -49,3 +48,6 @@ def retry(
         return retry_func
 
     return decorator
+
+
+AnyCrawler: TypeAlias = Crawler[Any]

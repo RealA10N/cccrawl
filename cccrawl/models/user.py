@@ -4,7 +4,7 @@ from typing import NewType
 from pydantic import EmailStr, computed_field
 
 from cccrawl.models.base import CCBaseModel, ModelUid
-from cccrawl.models.integration import IntegrationId
+from cccrawl.models.integration import Integration
 
 Name = NewType("Name", str)
 CodeforcesHandle = NewType("CodeforcesHandle", str)
