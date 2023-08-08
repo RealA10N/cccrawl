@@ -4,12 +4,10 @@ from typing import NewType, TypeVar
 
 from pydantic import AwareDatetime, Field, HttpUrl, computed_field
 
-from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
-from cccrawl.models.integration import IntegrationId
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelUid
+from cccrawl.models.problem import Problem
 from cccrawl.models.user import UserUid
 from cccrawl.utils import current_datetime
-
-SubmissionUid = NewType("SubmissionUid", str)
 
 
 class SubmissionVerdict(CCBaseStrEnum):
@@ -26,7 +24,7 @@ class CrawledSubmission(CCBaseModel):
     """A model that describes a single submission, where all information can
     and should be provided in a single scrape."""
 
-    problem_url: HttpUrl
+    problem: Problem
     verdict: SubmissionVerdict
 
     # The time in which the solution was submitted at. None if the judge does
@@ -42,11 +40,10 @@ class CrawledSubmission(CCBaseModel):
 
     @computed_field()
     @property
-    def uid(self) -> SubmissionUid:
-        hash = hashlib.sha256()
-        for token in (self.problem_url, self.verdict, self.submitted_at):
-            hash.update(str(token).encode())
-        return SubmissionUid(hash.hexdigest())
+    def uid(self) -> ModelUid:
+        return ModelUid(
+            self._hash_tokens(self.problem, self.verdict, str(self.submitted_at))
+        )
 
 
 SubmissionT = TypeVar("SubmissionT", bound="Submission")

@@ -8,6 +8,7 @@ from pydantic import HttpUrl
 from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
+from cccrawl.models.problem import Problem
 from cccrawl.models.user import UserConfig
 
 logger = getLogger(__name__)
@@ -35,7 +36,7 @@ class CodeforcesCrawler(Crawler):
         submissions = response.json().get("result", [])
         return [
             CrawledSubmission(
-                problem_url=self._get_problem_url(sub["problem"]),
+                problem=Problem(problem_url=self._get_problem_url(sub["problem"])),
                 verdict=(
                     SubmissionVerdict.accepted
                     if sub["verdict"] == "OK"

@@ -6,6 +6,7 @@ from httpx import HTTPError
 from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
+from cccrawl.models.problem import Problem
 from cccrawl.models.user import UserConfig
 
 logger = getLogger(__name__)
@@ -29,7 +30,7 @@ class CsesCrawler(Crawler):
         solved_tags = table.find_all("a", {"class": "full"})
         return [
             CrawledSubmission(
-                problem_url="https://cses.fi" + a_tag["href"][:-1],
+                problem=Problem(problem_url="https://cses.fi" + a_tag["href"][:-1]),
                 verdict=SubmissionVerdict.accepted,
             )
             for a_tag in solved_tags
