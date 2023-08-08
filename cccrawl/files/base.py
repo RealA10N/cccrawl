@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import IO
+from typing import TextIO
 
 from yarl import URL
 
@@ -9,6 +9,6 @@ class FileUploadService(ABC):
     should be publicly avaliable."""
 
     @abstractmethod
-    async def upload(self, content: IO) -> URL:
+    async def upload(self, content: TextIO) -> URL:
         """Upload the provided file content to a publicly avaliable file
         hosting service, and return the URL of the uploaded file."""
