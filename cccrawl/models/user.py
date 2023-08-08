@@ -3,10 +3,9 @@ from typing import NewType
 
 from pydantic import EmailStr, computed_field
 
-from cccrawl.models.base import CCBaseModel
+from cccrawl.models.base import CCBaseModel, ModelUid
 
 Name = NewType("Name", str)
-UserUid = NewType("UserUid", str)
 CodeforcesHandle = NewType("CodeforcesHandle", str)
 CsesUserNumber = NewType("CsesUserNumber", int)
 
@@ -19,5 +18,5 @@ class UserConfig(CCBaseModel):
 
     @computed_field
     @property
-    def uid(self) -> UserUid:
-        return UserUid(hashlib.sha256(self.email.encode()).hexdigest())
+    def uid(self) -> ModelUid:
+        return ModelUid(self._hash_tokens(self.email))
