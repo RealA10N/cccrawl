@@ -1,3 +1,14 @@
-from typing import NewType
+from enum import auto
+from typing import Literal, NewType, TypeAlias
 
-IntegrationId = NewType("IntegrationId", str)
+from pydantic import computed_field, conint, constr
+
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelUid
+
+
+class Platform(CCBaseStrEnum):
+    codeforces = auto()
+    cses = auto()
+
+class Integration(CCBaseModel):
+    platform: Platform
