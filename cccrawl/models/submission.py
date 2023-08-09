@@ -6,7 +6,6 @@ from pydantic import AwareDatetime, Field, HttpUrl, computed_field
 
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelUid
 from cccrawl.models.problem import Problem
-from cccrawl.models.user import UserUid
 from cccrawl.utils import current_datetime
 
 
@@ -67,11 +66,3 @@ class Submission(CrawledSubmission):
             **crawled_submission.model_dump(),
             first_seen_at=current_datetime(),
         )
-
-
-class UserSubmissions(CCBaseModel):
-    """A model containing all submissions of a given user."""
-
-    id: UserUid
-    submissions: list[Submission] = Field(default_factory=list)
-    last_update: AwareDatetime = Field(default_factory=current_datetime)
