@@ -1,4 +1,3 @@
-import hashlib
 from typing import NewType
 
 from pydantic import EmailStr, Field, RootModel, computed_field
@@ -6,21 +5,16 @@ from typing_extensions import TypeAlias
 
 from cccrawl.crawlers.codeforces import CodeforcesIntegration
 from cccrawl.crawlers.cses import CsesIntegration
+from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.base import CCBaseModel, ModelUid
-from cccrawl.models.integration import Integration
 
 Name = NewType("Name", str)
-IntegrationsUnionT: TypeAlias = CodeforcesIntegration | CsesIntegration
-
-
-class _IntegrationModel(RootModel):
-    root: IntegrationsUnionT = Field(..., discriminator="platform")
 
 
 class UserConfig(CCBaseModel):
     name: Name
     email: EmailStr
-    integrations: list[_IntegrationModel]
+    integrations: list[AnyIntegration]
 
     @computed_field  # type: ignore[misc]
     @property
