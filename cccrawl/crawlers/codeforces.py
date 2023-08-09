@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterable
 from datetime import datetime, timezone
 from logging import getLogger
 from typing import Any, Literal
@@ -5,7 +6,7 @@ from typing import Any, Literal
 from httpx import HTTPError
 from pydantic import HttpUrl, computed_field, constr
 
-from cccrawl.crawlers.base import CrawledSubmissionsGenerator, Crawler, retry
+from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.models.base import ModelUid
 from cccrawl.models.integration import Integration, Platform
@@ -18,7 +19,7 @@ logger = getLogger(__name__)
 
 class CodeforcesIntegration(Integration):
     platform: Literal[Platform.codeforces]
-    handle: constr(to_lower=True, min_length=3, max_length=30)
+    handle: constr(to_lower=True, min_length=3, max_length=30)  # type: ignore[valid-type]
 
     @computed_field  # type: ignore[misc]
     @property
@@ -30,7 +31,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
     @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
     async def crawl(
         self, integration: CodeforcesIntegration
-    ) -> CrawledSubmissionsGenerator:
+    ) -> AsyncIterable[CrawledSubmission]:
         if (handle := integration.handle) is None:
             logger.info("No available Codeforces user, skipping.")
             return
@@ -42,7 +43,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
         if response.status_code == 400:
             raise CrawlerError(
                 "Can not crawl Codeforces user '%s': %s",
-                config.codeforces,
+                handle,
                 str(response.content),
             )
         response.raise_for_status()

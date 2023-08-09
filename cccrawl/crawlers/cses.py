@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterable
 from logging import getLogger
 from typing import Literal
 
@@ -5,7 +6,7 @@ from bs4 import BeautifulSoup
 from httpx import HTTPError
 from pydantic import computed_field, conint
 
-from cccrawl.crawlers.base import CrawledSubmissionsGenerator, Crawler, retry
+from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.models.base import ModelUid
 from cccrawl.models.integration import Integration, Platform
@@ -18,7 +19,7 @@ logger = getLogger(__name__)
 
 class CsesIntegration(Integration):
     platform: Literal[Platform.cses]
-    user_number: conint(strict=True, gt=0, le=10_000_000)
+    user_number: conint(strict=True, gt=0, le=10_000_000)  # type: ignore[valid-type]
 
     @computed_field  # type: ignore[misc]
     @property
@@ -28,7 +29,9 @@ class CsesIntegration(Integration):
 
 class CsesCrawler(Crawler[CsesIntegration]):
     @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
-    async def crawl(self, integration: CsesIntegration) -> CrawledSubmissionsGenerator:
+    async def crawl(
+        self, integration: CsesIntegration
+    ) -> AsyncIterable[CrawledSubmission]:
         if (handle := integration.user_number) is None:
             logger.info("No available CSES user, skipping.")
             return

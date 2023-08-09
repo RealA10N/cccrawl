@@ -1,14 +1,14 @@
 import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterable
 from logging import getLogger
-from typing import AsyncGenerator, Generic, TypeAlias, TypeVar, Any
+from typing import Any, Generic, TypeAlias, TypeVar
 
 from httpx import AsyncClient
 
 from cccrawl.models.integration import Integration
 from cccrawl.models.submission import CrawledSubmission
 
-CrawledSubmissionsGenerator: TypeAlias = AsyncGenerator[CrawledSubmission, None]
 IntegrationT = TypeVar("IntegrationT", bound=Integration)
 
 logger = getLogger(__name__)
@@ -19,7 +19,9 @@ class Crawler(ABC, Generic[IntegrationT]):
         self._client = client
 
     @abstractmethod
-    async def crawl(self, integration: IntegrationT) -> CrawledSubmissionsGenerator:
+    async def crawl(
+        self, integration: IntegrationT
+    ) -> AsyncIterable[CrawledSubmission]:
         """Given the configuration of the user, returns a list of all
         submissions of the user."""
 
