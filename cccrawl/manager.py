@@ -1,17 +1,16 @@
 import asyncio
+from collections.abc import AsyncIterable
 from logging import getLogger
-from typing import Final, Any
+from typing import Any, Final, cast
+
 from httpx import AsyncClient
 
 from cccrawl.crawlers import CodeforcesCrawler, Crawler, CsesCrawler
-from cccrawl.crawlers.base import AnyCrawler, CrawledSubmissionsGenerator
-from cccrawl.db.base import Database, SubmissionsGenerator
+from cccrawl.crawlers.base import AnyCrawler
+from cccrawl.db.base import Database
+from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.integration import Integration, Platform
-from cccrawl.models.submission import (
-    CrawledSubmission,
-    Submission,
-    UserSubmissions,
-)
+from cccrawl.models.submission import CrawledSubmission, Submission
 from cccrawl.models.user import UserConfig
 from cccrawl.utils import current_datetime
 
@@ -30,35 +29,40 @@ class MainCrawler:
         self._db = db
         self._crawlers: dict[Platform, AnyCrawler] = {
             platform: crawler_cls(client)
-            for platform, crawler_cls in CRAWLER_PLATFORM_MAPPING
+            for platform, crawler_cls in CRAWLER_PLATFORM_MAPPING.items()
         }
 
     async def crawl_integraion(
-        self, integraion: Integration
-    ) -> CrawledSubmissionsGenerator:
-        submissions = self._crawlers[integraion.platform].crawl(integraion)
+        self, integraion: AnyIntegration
+    ) -> AsyncIterable[CrawledSubmission]:
+        base_integration = cast(Integration, integraion)
+        submissions = await self._crawlers[base_integration.platform].crawl(integraion)
         async for submission in submissions:
             yield submission
 
     async def crawl_integrations_new_submissions(
-        self, integration: Integration
-    ) -> SubmissionsGenerator:
+        self, integration: AnyIntegration
+    ) -> AsyncIterable[Submission]:
         seen_uids = set()
-        async for submission in self._db.get_submissions_by_integration(integration):
+        old_submissions = await self._db.get_submissions_by_integration(integration)
+        async for submission in old_submissions:
             seen_uids.add(submission.uid)
 
-        submissions_generator = self.crawl_integraion(integration)
-        async for crawled_submission in submissions_generator:
+        all_submissions = self.crawl_integraion(integration)
+        async for crawled_submission in all_submissions:
             if crawled_submission.uid not in seen_uids:
                 yield Submission.from_crawled(crawled_submission)
 
-    async def crawl_integration_and_update_db(self, integration: Integration) -> None:
+    async def crawl_integration_and_update_db(
+        self, integration: AnyIntegration
+    ) -> None:
         new_submissions = self.crawl_integrations_new_submissions(integration)
         async for submission in new_submissions:
             await self._db.upsert_submission(integration, submission)
 
     async def crawl(self) -> None:
-        async for integration in self._db.generate_integrations():
+        integrations = await self._db.generate_integrations()
+        async for integration in integrations:
             try:
                 await self.crawl_integration_and_update_db(integration)
             except Exception:
