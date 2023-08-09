@@ -20,7 +20,7 @@ class CsesIntegration(Integration):
     platform: Literal[Platform.cses]
     user_number: conint(strict=True, gt=0, le=10_000_000)
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
     @property
     def uid(self) -> ModelUid:
         return ModelUid(self._hash_tokens(self.platform.value, self.user_number))

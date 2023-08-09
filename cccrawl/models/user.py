@@ -16,7 +16,7 @@ class UserConfig(CCBaseModel):
     email: EmailStr
     integrations: list[Integration]
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
     @property
     def uid(self) -> ModelUid:
         return ModelUid(self._hash_tokens(self.email))

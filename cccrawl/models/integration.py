@@ -10,5 +10,6 @@ class Platform(CCBaseStrEnum):
     codeforces = auto()
     cses = auto()
 
+
 class Integration(CCBaseModel):
     platform: Platform

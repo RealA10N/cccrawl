@@ -38,7 +38,7 @@ class CrawledSubmission(CCBaseModel):
     # A URL pointing to a raw text file with the submission source code.
     raw_code_url: HttpUrl | None = None
 
-    @computed_field()
+    @computed_field  # type: ignore[misc]
     @property
     def uid(self) -> ModelUid:
         return ModelUid(

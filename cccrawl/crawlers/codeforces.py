@@ -20,7 +20,7 @@ class CodeforcesIntegration(Integration):
     platform: Literal[Platform.codeforces]
     handle: constr(to_lower=True, min_length=3, max_length=30)
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
     @property
     def uid(self) -> ModelUid:
         return ModelUid(self._hash_tokens(self.platform.value, self.handle))
