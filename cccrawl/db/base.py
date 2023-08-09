@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, TypeAlias
+from collections.abc import AsyncIterable
+from typing import TypeAlias
 
 from cccrawl.models.integration import Integration
-from cccrawl.models.submission import Submission, UserSubmissions
+from cccrawl.models.submission import Submission
 from cccrawl.models.user import UserConfig
-
-SubmissionsGenerator: TypeAlias = AsyncGenerator[Submission, None]
-IntegrationsGenerator: TypeAlias = AsyncGenerator[Integration, None]
 
 
 class Database(ABC):
@@ -14,10 +12,10 @@ class Database(ABC):
     and storing the solution data."""
 
     @abstractmethod
-    async def generate_integrations(self) -> IntegrationsGenerator:
+    async def generate_integrations(self) -> AsyncIterable[Integration]:
         """An infinite generator that should yield all integrations in the
-        database, in a cycle. No users should be left outside the cycle, and
-        newly registered users should be added at some point."""
+        database, in a cycle. No integrations should be left outside the cycle, and
+        newly registered users & integrations should be added at some point."""
 
     @abstractmethod
     async def upsert_submission(
@@ -30,6 +28,6 @@ class Database(ABC):
     @abstractmethod
     async def get_submissions_by_integration(
         self, integration: Integration
-    ) -> SubmissionsGenerator:
+    ) -> AsyncIterable[Submission]:
         """Retrieve list of previously scraped submissions for the provided
-        user."""
+        integration."""
