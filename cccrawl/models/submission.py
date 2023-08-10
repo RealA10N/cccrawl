@@ -1,5 +1,5 @@
 from enum import auto
-from typing import TypeVar, cast
+from typing import TypeVar
 
 from pydantic import AwareDatetime, Field, HttpUrl, computed_field
 
@@ -44,7 +44,7 @@ class CrawledSubmission(CCBaseModel):
     def id(self) -> ModelId:
         return ModelId(
             self._hash_tokens(
-                cast(Integration, self.integration),
+                self.integration.root,
                 self.problem,
                 self.verdict,
                 str(self.submitted_at),
