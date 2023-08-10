@@ -48,3 +48,4 @@ jobs:
           --secure-environment-variables
           COSMOS_KEY=${{ secrets.COSMOS_KEY }}
           COSMOS_ENDPOINT=${{ secrets.COSMOS_ENDPOINT }}
+          ENV_NAME=prod
