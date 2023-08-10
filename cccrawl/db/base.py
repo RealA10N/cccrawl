@@ -17,9 +17,12 @@ class Database(ABC):
         newly registered users & integrations should be added at some point."""
 
     @abstractmethod
-    async def upsert_submission(
-        self, integration: AnyIntegration, submission: Submission
-    ) -> None:
+    async def upsert_integration(self, integration: AnyIntegration) -> None:
+        """Update integration details on the database. Used for example to update
+        the last fetch time, or update status of an integration."""
+
+    @abstractmethod
+    async def upsert_submission(self, submission: Submission) -> None:
         """Insert a new submission to the database, or update an existing
         submission entry if a submisson with the same unique id already exists
         in the database."""

@@ -56,7 +56,10 @@ class MainCrawler:
     ) -> None:
         new_submissions = self.crawl_integrations_new_submissions(integration)
         async for submission in new_submissions:
-            await self._db.upsert_submission(integration, submission)
+            await self._db.upsert_submission(submission)
+
+        integration.root.update_last_fetched()
+        await self._db.upsert_integration(integration)
 
     async def crawl(self) -> None:
         integrations = self._db.generate_integrations()

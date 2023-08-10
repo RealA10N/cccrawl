@@ -21,22 +21,28 @@ class CosmosDatabase(Database):
     async def init_database(
         cls: Type[CosmosDatabaseT], client: CosmosClient
     ) -> CosmosDatabaseT:
-        users_db = await client.create_database_if_not_exists(id="dev")
+        db = await client.create_database_if_not_exists(id="dev")
 
-        configs_container = await users_db.create_container_if_not_exists(
+        configs_container = await db.create_container_if_not_exists(
             "configs", partition_key=PartitionKey("/id")
         )
 
-        submissions_container = await users_db.create_container_if_not_exists(
+        submissions_container = await db.create_container_if_not_exists(
             "submissions", partition_key=PartitionKey("/id")
         )
 
-        return cls(users_db, configs_container, submissions_container)
+        integrations_container = await db.create_container_if_not_exists(
+            "integrations", partition_key=PartitionKey("/id")
+        )
 
-    def __init__(self, users_db, configs_container, submissions_container) -> None:
-        self._users_db = users_db
+        return cls(configs_container, submissions_container, integrations_container)
+
+    def __init__(
+        self, configs_container, submissions_container, integrations_container
+    ) -> None:
         self._configs_container = configs_container
         self._submissions_container = submissions_container
+        self._integrations_container = integrations_container
 
     async def generate_integrations(self) -> AsyncIterable[AnyIntegration]:
         while True:
@@ -46,12 +52,15 @@ class CosmosDatabase(Database):
                 for integration in user.integrations:
                     yield integration
 
-    async def upsert_submission(
-        self, integration: AnyIntegration, submission: Submission
-    ) -> None:
+    async def upsert_submission(self, submission: Submission) -> None:
         logger.info("Upserting submission: %s", submission)
         body = submission.model_dump(mode="json")
         await self._submissions_container.upsert_item(body=body)
+
+    async def upsert_integration(self, integration: AnyIntegration) -> None:
+        logger.info("Upserting integration: %s", integration.root)
+        body = integration.root.model_dump(mode="json")
+        await self._integrations_container.upsert_item(body=body)
 
     async def get_submissions_by_integration(
         self, integration: AnyIntegration
