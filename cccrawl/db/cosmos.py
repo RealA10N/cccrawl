@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncIterable
 from logging import getLogger
 from typing import Type, TypeVar
@@ -8,7 +9,6 @@ from azure.cosmos.aio import CosmosClient
 from cccrawl.db.base import Database
 from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.submission import Submission
-from cccrawl.models.user import UserConfig
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
 
@@ -21,7 +21,9 @@ class CosmosDatabase(Database):
     async def init_database(
         cls: Type[CosmosDatabaseT], client: CosmosClient
     ) -> CosmosDatabaseT:
-        db = await client.create_database_if_not_exists(id="dev")
+        db = await client.create_database_if_not_exists(
+            id=os.getenv("ENV_NAME", default="dev")
+        )
 
         configs_container = await db.create_container_if_not_exists(
             "configs", partition_key=PartitionKey("/id")
