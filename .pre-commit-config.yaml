@@ -17,5 +17,8 @@ repos:
     rev: 'v1.4.1'
     hooks:
     - id: mypy
+    additional_dependencies:
+    - 'pydantic'
+
 ci:
   autofix_commit_msg: "[⚠️⚒️] auto fixes from pre-commit.com hooks\n\nfor more information, see https://pre-commit.ci"
