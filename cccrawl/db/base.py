@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterable
-from typing import TypeAlias
 
 from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.submission import Submission

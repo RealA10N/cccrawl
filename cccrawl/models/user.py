@@ -3,10 +3,8 @@ from typing import NewType
 from pydantic import EmailStr, Field, RootModel, computed_field
 from typing_extensions import TypeAlias
 
-from cccrawl.crawlers.codeforces import CodeforcesIntegration
-from cccrawl.crawlers.cses import CsesIntegration
 from cccrawl.models.any_integration import AnyIntegration
-from cccrawl.models.base import CCBaseModel, ModelUid
+from cccrawl.models.base import CCBaseModel, ModelId
 
 Name = NewType("Name", str)
 
@@ -18,5 +16,5 @@ class UserConfig(CCBaseModel):
 
     @computed_field  # type: ignore[misc]
     @property
-    def uid(self) -> ModelUid:
-        return ModelUid(self._hash_tokens(self.email))
+    def id(self) -> ModelId:
+        return ModelId(self._hash_tokens(self.email))

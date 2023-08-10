@@ -1,10 +1,11 @@
-import hashlib
 from enum import auto
-from typing import NewType, TypeVar
+from typing import TypeVar, cast
 
 from pydantic import AwareDatetime, Field, HttpUrl, computed_field
 
-from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelUid
+from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
+from cccrawl.models.integration import Integration
 from cccrawl.models.problem import Problem
 from cccrawl.utils import current_datetime
 
@@ -23,6 +24,7 @@ class CrawledSubmission(CCBaseModel):
     """A model that describes a single submission, where all information can
     and should be provided in a single scrape."""
 
+    integration: AnyIntegration
     problem: Problem
     verdict: SubmissionVerdict
 
@@ -39,9 +41,14 @@ class CrawledSubmission(CCBaseModel):
 
     @computed_field  # type: ignore[misc]
     @property
-    def uid(self) -> ModelUid:
-        return ModelUid(
-            self._hash_tokens(self.problem, self.verdict, str(self.submitted_at))
+    def id(self) -> ModelId:
+        return ModelId(
+            self._hash_tokens(
+                cast(Integration, self.integration),
+                self.problem,
+                self.verdict,
+                str(self.submitted_at),
+            )
         )
 
 

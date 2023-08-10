@@ -1,4 +1,3 @@
-import json
 from typing import TextIO
 
 from httpx import AsyncClient

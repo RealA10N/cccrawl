@@ -1,14 +1,16 @@
 from collections.abc import AsyncIterable
 from datetime import datetime, timezone
 from logging import getLogger
-from typing import Any, Literal
+from typing import Any
 
 from httpx import HTTPError
 from pydantic import HttpUrl, computed_field, constr
 
 from cccrawl.crawlers.base import Crawler, retry
 from cccrawl.crawlers.error import CrawlerError
-from cccrawl.models.base import ModelUid
+from cccrawl.integrations.codeforces import CodeforcesIntegration
+from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.base import ModelId
 from cccrawl.models.integration import Integration, Platform
 from cccrawl.models.problem import Problem
 from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
@@ -17,18 +19,8 @@ from cccrawl.models.user import UserConfig
 logger = getLogger(__name__)
 
 
-class CodeforcesIntegration(Integration):
-    platform: Literal[Platform.codeforces]
-    handle: constr(to_lower=True, min_length=3, max_length=30)  # type: ignore[valid-type]
-
-    @computed_field  # type: ignore[misc]
-    @property
-    def uid(self) -> ModelUid:
-        return ModelUid(self._hash_tokens(self.platform.value, self.handle))
-
-
 class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
-    @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
+    # @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
     async def crawl(
         self, integration: CodeforcesIntegration
     ) -> AsyncIterable[CrawledSubmission]:
@@ -51,6 +43,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
         submissions = response.json().get("result", [])
         for sub in submissions:
             yield CrawledSubmission(
+                integration=AnyIntegration(root=integration),
                 problem=Problem(problem_url=self._get_problem_url(sub["problem"])),
                 verdict=(
                     SubmissionVerdict.accepted

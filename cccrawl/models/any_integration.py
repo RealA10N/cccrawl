@@ -2,8 +2,8 @@ from typing import TypeAlias
 
 from pydantic import Field, RootModel
 
-from cccrawl.crawlers.codeforces import CodeforcesIntegration
-from cccrawl.crawlers.cses import CsesIntegration
+from cccrawl.integrations.codeforces import CodeforcesIntegration
+from cccrawl.integrations.cses import CsesIntegration
 
 IntegrationsUnionT: TypeAlias = CodeforcesIntegration | CsesIntegration
 

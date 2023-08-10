@@ -1,7 +1,6 @@
-import asyncio
 from collections.abc import AsyncIterable
 from logging import getLogger
-from typing import Any, Final, cast
+from typing import Final
 
 from httpx import AsyncClient
 
@@ -35,8 +34,7 @@ class MainCrawler:
     async def crawl_integraion(
         self, integraion: AnyIntegration
     ) -> AsyncIterable[CrawledSubmission]:
-        base_integration = cast(Integration, integraion)
-        submissions = await self._crawlers[base_integration.platform].crawl(integraion)
+        submissions = self._crawlers[integraion.root.platform].crawl(integraion.root)
         async for submission in submissions:
             yield submission
 
@@ -44,13 +42,13 @@ class MainCrawler:
         self, integration: AnyIntegration
     ) -> AsyncIterable[Submission]:
         seen_uids = set()
-        old_submissions = await self._db.get_submissions_by_integration(integration)
+        old_submissions = self._db.get_submissions_by_integration(integration)
         async for submission in old_submissions:
-            seen_uids.add(submission.uid)
+            seen_uids.add(submission.id)
 
         all_submissions = self.crawl_integraion(integration)
         async for crawled_submission in all_submissions:
-            if crawled_submission.uid not in seen_uids:
+            if crawled_submission.id not in seen_uids:
                 yield Submission.from_crawled(crawled_submission)
 
     async def crawl_integration_and_update_db(
@@ -61,7 +59,7 @@ class MainCrawler:
             await self._db.upsert_submission(integration, submission)
 
     async def crawl(self) -> None:
-        integrations = await self._db.generate_integrations()
+        integrations = self._db.generate_integrations()
         async for integration in integrations:
             try:
                 await self.crawl_integration_and_update_db(integration)

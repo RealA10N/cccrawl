@@ -1,9 +1,8 @@
 from enum import auto
-from typing import Literal, NewType, TypeAlias
 
 from pydantic import computed_field, conint, constr
 
-from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelUid
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
 
 
 class Platform(CCBaseStrEnum):
