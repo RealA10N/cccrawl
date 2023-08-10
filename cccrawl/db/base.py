@@ -11,7 +11,7 @@ class Database(ABC):
     and storing the solution data."""
 
     @abstractmethod
-    async def generate_integrations(self) -> AsyncIterable[AnyIntegration]:
+    def generate_integrations(self) -> AsyncIterable[AnyIntegration]:
         """An infinite generator that should yield all integrations in the
         database, in a cycle. No integrations should be left outside the cycle, and
         newly registered users & integrations should be added at some point."""
@@ -25,7 +25,7 @@ class Database(ABC):
         in the database."""
 
     @abstractmethod
-    async def get_submissions_by_integration(
+    def get_submissions_by_integration(
         self, integration: AnyIntegration
     ) -> AsyncIterable[Submission]:
         """Retrieve list of previously scraped submissions for the provided
