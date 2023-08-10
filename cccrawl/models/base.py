@@ -5,13 +5,13 @@ from typing import NewType, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
-ModelId = NewType("ModelUid", str)
+ModelId = NewType("ModelId", str)
 
 
 @runtime_checkable
-class HasUid(Protocol):
+class HasId(Protocol):
     @property
-    def uid(self) -> ModelId:
+    def id(self) -> ModelId:
         ...
 
 
@@ -23,14 +23,14 @@ class CCBaseModel(BaseModel):
     def id(self) -> ModelId:
         """A predictable uid (typically a hash) that represents the object."""
 
-    def _hash_tokens(self, *tokens: str | int | HasUid) -> str:
+    def _hash_tokens(self, *tokens: str | int | HasId) -> str:
         """Returns a predictible and consistant hash that is a direct output
         of the provided string tokens. To be used with the abstract uid
         property: every model implementation should define the tokens it depends
         on."""
         hash = hashlib.sha256()
         for token in tokens:
-            token_str = token.uid if isinstance(token, HasUid) else str(token)
+            token_str = token.id if isinstance(token, HasId) else str(token)
             hash.update(token_str.encode(encoding="utf8"))
         return hash.hexdigest()
 
