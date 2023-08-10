@@ -4,14 +4,12 @@ from typing import Final
 
 from httpx import AsyncClient
 
-from cccrawl.crawlers import CodeforcesCrawler, Crawler, CsesCrawler
+from cccrawl.crawlers import CodeforcesCrawler, CsesCrawler
 from cccrawl.crawlers.base import AnyCrawler
 from cccrawl.db.base import Database
 from cccrawl.models.any_integration import AnyIntegration
-from cccrawl.models.integration import Integration, Platform
+from cccrawl.models.integration import Platform
 from cccrawl.models.submission import CrawledSubmission, Submission
-from cccrawl.models.user import UserConfig
-from cccrawl.utils import current_datetime
 
 logger = getLogger(__name__)
 
@@ -31,24 +29,24 @@ class MainCrawler:
             for platform, crawler_cls in CRAWLER_PLATFORM_MAPPING.items()
         }
 
-    async def crawl_integraion(
-        self, integraion: AnyIntegration
+    async def crawl_integration(
+        self, integration: AnyIntegration
     ) -> AsyncIterable[CrawledSubmission]:
-        submissions = self._crawlers[integraion.root.platform].crawl(integraion.root)
+        submissions = self._crawlers[integration.root.platform].crawl(integration.root)
         async for submission in submissions:
             yield submission
 
     async def crawl_integrations_new_submissions(
         self, integration: AnyIntegration
     ) -> AsyncIterable[Submission]:
-        seen_uids = set()
+        seen_ids = set()
         old_submissions = self._db.get_submissions_by_integration(integration)
         async for submission in old_submissions:
-            seen_uids.add(submission.id)
+            seen_ids.add(submission.id)
 
-        all_submissions = self.crawl_integraion(integration)
+        all_submissions = self.crawl_integration(integration)
         async for crawled_submission in all_submissions:
-            if crawled_submission.id not in seen_uids:
+            if crawled_submission.id not in seen_ids:
                 yield Submission.from_crawled(crawled_submission)
 
     async def crawl_integration_and_update_db(

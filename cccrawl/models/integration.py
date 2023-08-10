@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
 from enum import auto
 
-from pydantic import AwareDatetime, computed_field, conint, constr
+from pydantic import AwareDatetime
 
-from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
+from cccrawl.utils import current_datetime
 
 
 class Platform(CCBaseStrEnum):
@@ -16,4 +16,4 @@ class Integration(CCBaseModel):
     last_fetch: AwareDatetime | None = None
 
     def update_last_fetched(self) -> None:
-        self.last_fetch = datetime.now(tz=timezone.utc)
+        self.last_fetch = current_datetime()
