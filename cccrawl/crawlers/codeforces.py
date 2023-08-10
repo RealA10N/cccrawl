@@ -3,10 +3,11 @@ from datetime import datetime, timezone
 from logging import getLogger
 from typing import Any
 
-from httpx import HTTPError
+import backoff
+from httpx import HTTPError, Response
 from pydantic import HttpUrl, computed_field, constr
 
-from cccrawl.crawlers.base import Crawler, retry
+from cccrawl.crawlers.base import Crawler
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.integrations.codeforces import CodeforcesIntegration
 from cccrawl.models.any_integration import AnyIntegration
@@ -15,12 +16,12 @@ from cccrawl.models.integration import Integration, Platform
 from cccrawl.models.problem import Problem
 from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
 from cccrawl.models.user import UserConfig
+from cccrawl.utils.ratelimit import ratelimit
 
 logger = getLogger(__name__)
 
 
 class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
-    # @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
     async def crawl(
         self, integration: CodeforcesIntegration
     ) -> AsyncIterable[CrawledSubmission]:
@@ -28,10 +29,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
             logger.info("No available Codeforces user, skipping.")
             return
 
-        logger.info("Started crawling Codeforces handle '%s'", handle)
-        url = f"https://codeforces.com/api/user.status?handle={handle}&from=1"
-        response = await self._client.get(url)
-
+        response = await self._get_user_submissions(handle)
         if response.status_code == 400:
             raise CrawlerError(
                 "Can not crawl Codeforces user '%s': %s",
@@ -55,6 +53,12 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
                 ),
                 submission_url=self._get_submission_url(submission=sub),
             )
+
+    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
+    @ratelimit(calls=1, every=1)
+    async def _get_user_submissions(self, handle: str) -> Response:
+        url = "https://codeforces.com/api/user.status"
+        return await self._client.get(url, params={"handle": handle, "from": 1})
 
     @classmethod
     def _get_contest_id(cls, problem: dict[str, Any]) -> int:

@@ -1,39 +1,36 @@
 from collections.abc import AsyncIterable
 from logging import getLogger
 
+import backoff
 from bs4 import BeautifulSoup
-from httpx import HTTPError
-from pydantic import computed_field, conint
+from httpx import HTTPError, Response
 
-from cccrawl.crawlers.base import Crawler, retry
+from cccrawl.crawlers.base import Crawler
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.integrations.cses import CsesIntegration
 from cccrawl.models.any_integration import AnyIntegration
-from cccrawl.models.base import ModelId
 from cccrawl.models.problem import Problem
 from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
-from cccrawl.models.user import UserConfig
+from cccrawl.utils.ratelimit import ratelimit
 
 logger = getLogger(__name__)
 
 
 class CsesCrawler(Crawler[CsesIntegration]):
-    @retry(exception=HTTPError, start_sleep=5, fail_factor=2)
     async def crawl(
         self, integration: CsesIntegration
     ) -> AsyncIterable[CrawledSubmission]:
-        if (handle := integration.user_number) is None:
+        if (user_number := integration.user_number) is None:
             logger.info("No available CSES user, skipping.")
             return
 
-        logger.info("Started crawling CSES user '%s'", handle)
-        url = f"https://cses.fi/problemset/user/{handle}/"
-        response = await self._client.get(url)
+        response = await self._get_user_profile(user_number)
         response.raise_for_status()
+
         soup = BeautifulSoup(response.text, "lxml")
         table = soup.find("table")
         if table is None:
-            raise CrawlerError(f"CSES user '{handle}' does not exist")
+            raise CrawlerError(f"CSES user {user_number} does not exist")
         solved_tags = table.find_all("a", {"class": "full"})
 
         for a_tag in solved_tags:
@@ -42,3 +39,9 @@ class CsesCrawler(Crawler[CsesIntegration]):
                 problem=Problem(problem_url="https://cses.fi" + a_tag["href"][:-1]),
                 verdict=SubmissionVerdict.accepted,
             )
+
+    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
+    @ratelimit(calls=1, every=8)
+    async def _get_user_profile(self, user_number: int) -> Response:
+        url = f"https://cses.fi/problemset/user/{user_number}/"
+        return await self._client.get(url)
