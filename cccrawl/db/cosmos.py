@@ -47,10 +47,9 @@ class CosmosDatabase(Database):
     async def generate_integrations(self) -> AsyncIterable[AnyIntegration]:
         while True:
             logger.info("Fetching all integrations (new cycle started)")
-            async for item in self._configs_container.read_all_items():
-                user = UserConfig.model_validate(item)
-                for integration in user.integrations:
-                    yield integration
+            async for item in self._integrations_container.read_all_items():
+                integration = AnyIntegration.model_validate(item)
+                yield integration
 
     async def upsert_submission(self, submission: Submission) -> None:
         logger.info("Upserting submission: %s", submission)

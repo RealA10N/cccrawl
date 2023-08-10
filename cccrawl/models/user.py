@@ -12,7 +12,7 @@ Name = NewType("Name", str)
 class UserConfig(CCBaseModel):
     name: Name
     email: EmailStr
-    integrations: list[AnyIntegration]
+    integrations: list[ModelId]
 
     @computed_field  # type: ignore[misc]
     @property
