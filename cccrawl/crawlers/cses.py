@@ -31,13 +31,16 @@ class CsesCrawler(Crawler[CsesIntegration]):
         table = soup.find("table")
         if table is None:
             raise CrawlerError(f"CSES user {user_number} does not exist")
-        solved_tags = table.find_all("a", {"class": "full"})
 
-        for a_tag in solved_tags:
+        submitted_tags = table.find_all("a", {"class": {"full", "zero"}})
+
+        for a_tag in submitted_tags:
             yield CrawledSubmission(
                 integration=AnyIntegration(root=integration),
                 problem=Problem(problem_url="https://cses.fi" + a_tag["href"][:-1]),
-                verdict=SubmissionVerdict.accepted,
+                verdict=SubmissionVerdict.accepted
+                if "full" in a_tag["class"]
+                else SubmissionVerdict.rejected,
             )
 
     @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
