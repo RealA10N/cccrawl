@@ -7,3 +7,4 @@ azure-identity
 aiohttp
 python-dotenv
 yarl
+backoff>=2.2.1
