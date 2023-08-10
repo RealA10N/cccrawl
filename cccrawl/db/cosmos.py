@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterable
+from logging import getLogger
 from typing import Type, TypeVar
 
 from azure.cosmos import PartitionKey
@@ -10,6 +11,9 @@ from cccrawl.models.submission import Submission
 from cccrawl.models.user import UserConfig
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
+
+
+logger = getLogger(__name__)
 
 
 class CosmosDatabase(Database):
@@ -36,6 +40,7 @@ class CosmosDatabase(Database):
 
     async def generate_integrations(self) -> AsyncIterable[AnyIntegration]:
         while True:
+            logger.info("Fetching all integrations (new cycle started)")
             async for item in self._configs_container.read_all_items():
                 user = UserConfig.model_validate(item)
                 for integration in user.integrations:
@@ -44,6 +49,7 @@ class CosmosDatabase(Database):
     async def upsert_submission(
         self, integration: AnyIntegration, submission: Submission
     ) -> None:
+        logger.info("Upserting submission: %s", submission)
         body = submission.model_dump(mode="json")
         await self._submissions_container.upsert_item(body=body)
 
