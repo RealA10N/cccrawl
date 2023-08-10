@@ -17,13 +17,15 @@ async def wait_until(when: datetime) -> None:
 
 
 def ratelimit(
-    calls: int, every: timedelta
+    calls: int, every: timedelta | float
 ) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
     """A ratelimit decorator to wrap async functions.
     Ensures that the wrapped function is called at most 'calls' times in any
     'every' interval of time. If it is called more then that, the call will
     sleep (using async.sleep) until it is safe to make the call, and then the
     execution will resume."""
+
+    every = timedelta(seconds=every) if not isinstance(every, timedelta) else every
 
     def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
         recent_calls = Queue[datetime](maxsize=calls)
