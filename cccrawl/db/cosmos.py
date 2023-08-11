@@ -1,14 +1,19 @@
-from typing import Any, AsyncGenerator, Type, TypeVar
+import os
+from collections.abc import AsyncIterable
+from logging import getLogger
+from typing import Type, TypeVar
 
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import CosmosClient
-from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 from cccrawl.db.base import Database
-from cccrawl.models.submission import UserSubmissions
-from cccrawl.models.user import UserConfig
+from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.submission import Submission
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
+
+
+logger = getLogger(__name__)
 
 
 class CosmosDatabase(Database):
@@ -16,44 +21,54 @@ class CosmosDatabase(Database):
     async def init_database(
         cls: Type[CosmosDatabaseT], client: CosmosClient
     ) -> CosmosDatabaseT:
-        users_db = await client.create_database_if_not_exists(id="users")
+        db = await client.create_database_if_not_exists(
+            id=os.getenv("ENV_NAME", default="dev")
+        )
 
-        configs_container = await users_db.create_container_if_not_exists(
+        configs_container = await db.create_container_if_not_exists(
             "configs", partition_key=PartitionKey("/id")
         )
 
-        submissions_container = await users_db.create_container_if_not_exists(
+        submissions_container = await db.create_container_if_not_exists(
             "submissions", partition_key=PartitionKey("/id")
         )
 
-        return cls(users_db, configs_container, submissions_container)
+        integrations_container = await db.create_container_if_not_exists(
+            "integrations", partition_key=PartitionKey("/id")
+        )
+
+        return cls(configs_container, submissions_container, integrations_container)
 
     def __init__(
-        self, users_db, configs_container, submissions_container
+        self, configs_container, submissions_container, integrations_container
     ) -> None:
-        self._users_db = users_db
         self._configs_container = configs_container
         self._submissions_container = submissions_container
+        self._integrations_container = integrations_container
 
-    async def generate_users(self) -> AsyncGenerator[UserConfig, None]:
+    async def generate_integrations(self) -> AsyncIterable[AnyIntegration]:
         while True:
-            async for item in self._configs_container.read_all_items():
-                yield UserConfig.model_validate(item)
+            logger.info("Fetching all integrations (new cycle started)")
+            async for item in self._integrations_container.read_all_items():
+                integration = AnyIntegration.model_validate(item)
+                yield integration
 
-    async def overwrite_user_submissions(
-        self, submissions: UserSubmissions
-    ) -> None:
-        body = submissions.model_dump(mode="json")
+    async def upsert_submission(self, submission: Submission) -> None:
+        logger.info("Upserting submission: %s", submission)
+        body = submission.model_dump(mode="json")
         await self._submissions_container.upsert_item(body=body)
 
-    async def get_user_submissions(self, user: UserConfig) -> UserSubmissions:
-        try:
-            submissions_doc: dict[
-                str, Any
-            ] = await self._submissions_container.read_item(
-                user.uid, partition_key=user.uid
-            )
-        except CosmosResourceNotFoundError:
-            return UserSubmissions(id=user.uid)
+    async def upsert_integration(self, integration: AnyIntegration) -> None:
+        logger.info("Upserting integration: %s", integration.root)
+        body = integration.root.model_dump(mode="json")
+        await self._integrations_container.upsert_item(body=body)
 
-        return UserSubmissions.model_validate(submissions_doc)
+    async def get_submissions_by_integration(
+        self, integration: AnyIntegration
+    ) -> AsyncIterable[Submission]:
+        integration_id = integration.root.id
+        query = f"SELECT * FROM c WHERE c.integration.id = '{integration_id}'"
+        results = self._submissions_container.query_items(query)
+
+        async for document in results:
+            yield Submission.model_validate(document)

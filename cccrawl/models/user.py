@@ -1,23 +1,20 @@
-import hashlib
 from typing import NewType
 
-from pydantic import EmailStr, computed_field
+from pydantic import EmailStr, Field, RootModel, computed_field
+from typing_extensions import TypeAlias
 
-from cccrawl.models.base import CCBaseModel
+from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.base import CCBaseModel, ModelId
 
 Name = NewType("Name", str)
-UserUid = NewType("UserUid", str)
-CodeforcesHandle = NewType("CodeforcesHandle", str)
-CsesUserNumber = NewType("CsesUserNumber", int)
 
 
 class UserConfig(CCBaseModel):
     name: Name
     email: EmailStr
-    codeforces: CodeforcesHandle | None
-    cses: CsesUserNumber | None
+    integrations: list[ModelId]
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
     @property
-    def uid(self) -> UserUid:
-        return UserUid(hashlib.sha256(self.email.encode()).hexdigest())
+    def id(self) -> ModelId:
+        return ModelId(self._hash_tokens(self.email))

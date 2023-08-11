@@ -15,9 +15,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Disable info logs for azure cosmos, they are annoying!
-azure_logger = logging.getLogger(
-    "azure.core.pipeline.policies.http_logging_policy"
-)
+azure_logger = logging.getLogger("azure.core.pipeline.policies.http_logging_policy")
 azure_logger.setLevel(logging.WARNING)
 
 load_dotenv()

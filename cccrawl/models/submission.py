@@ -1,15 +1,13 @@
-import hashlib
 from enum import auto
-from typing import NewType, TypeVar
+from typing import TypeVar
 
 from pydantic import AwareDatetime, Field, HttpUrl, computed_field
 
-from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
-from cccrawl.models.integration import IntegrationId
-from cccrawl.models.user import UserUid
+from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
+from cccrawl.models.integration import Integration
+from cccrawl.models.problem import Problem
 from cccrawl.utils import current_datetime
-
-SubmissionUid = NewType("SubmissionUid", str)
 
 
 class SubmissionVerdict(CCBaseStrEnum):
@@ -26,7 +24,8 @@ class CrawledSubmission(CCBaseModel):
     """A model that describes a single submission, where all information can
     and should be provided in a single scrape."""
 
-    problem_url: HttpUrl
+    integration: AnyIntegration
+    problem: Problem
     verdict: SubmissionVerdict
 
     # The time in which the solution was submitted at. None if the judge does
@@ -40,13 +39,17 @@ class CrawledSubmission(CCBaseModel):
     # A URL pointing to a raw text file with the submission source code.
     raw_code_url: HttpUrl | None = None
 
-    @computed_field()
+    @computed_field  # type: ignore[misc]
     @property
-    def uid(self) -> SubmissionUid:
-        hash = hashlib.sha256()
-        for token in (self.problem_url, self.verdict, self.submitted_at):
-            hash.update(str(token).encode())
-        return SubmissionUid(hash.hexdigest())
+    def id(self) -> ModelId:
+        return ModelId(
+            self._hash_tokens(
+                self.integration.root,
+                self.problem,
+                self.verdict,
+                str(self.submitted_at),
+            )
+        )
 
 
 SubmissionT = TypeVar("SubmissionT", bound="Submission")
@@ -70,11 +73,3 @@ class Submission(CrawledSubmission):
             **crawled_submission.model_dump(),
             first_seen_at=current_datetime(),
         )
-
-
-class UserSubmissions(CCBaseModel):
-    """A model containing all submissions of a given user."""
-
-    id: UserUid
-    submissions: list[Submission] = Field(default_factory=list)
-    last_update: AwareDatetime = Field(default_factory=current_datetime)
