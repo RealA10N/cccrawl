@@ -28,14 +28,14 @@ def ratelimit(
     every = timedelta(seconds=every) if not isinstance(every, timedelta) else every
 
     def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
-        recent_calls = Queue[datetime](maxsize=calls)
+        recent_calls = Queue[datetime](maxsize=calls + 1)
 
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            if recent_calls.qsize() == calls:
+            recent_calls.put(datetime.now())
+            if recent_calls.qsize() > calls:
                 top = recent_calls.get()
                 await wait_until(top + every)
-            recent_calls.put(datetime.now())
             return await func(*args, **kwargs)
 
         return wrapper
