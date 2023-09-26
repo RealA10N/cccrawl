@@ -1,13 +1,11 @@
 from enum import auto
 from typing import TypeVar
 
-from pydantic import AwareDatetime, Field, HttpUrl, computed_field
+from pydantic import AwareDatetime, HttpUrl, computed_field
 
 from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
-from cccrawl.models.integration import Integration
 from cccrawl.models.problem import Problem
-from cccrawl.utils import current_datetime
 
 
 class SubmissionVerdict(CCBaseStrEnum):
@@ -36,9 +34,6 @@ class CrawledSubmission(CCBaseModel):
     # source code, verdict, etc. (if exists)
     submission_url: HttpUrl | None = None
 
-    # A URL pointing to a raw text file with the submission source code.
-    raw_code_url: HttpUrl | None = None
-
     @computed_field  # type: ignore[misc]
     @property
     def id(self) -> ModelId:
@@ -47,7 +42,13 @@ class CrawledSubmission(CCBaseModel):
                 self.integration.root,
                 self.problem,
                 self.verdict,
+                # Submitted at is part of the hash: if unable to collect, all
+                # submissions to the same problem with the same problem will
+                # be treated the same. Otherwise, the hash of submissions
+                # submitted at different times will be different.
                 str(self.submitted_at),
+                # The same goes for submission URL.
+                str(self.submission_url),
             )
         )
 
@@ -64,12 +65,5 @@ class Submission(CrawledSubmission):
     # Should not be changed between scrapes (constant value).
     first_seen_at: AwareDatetime
 
-    @classmethod
-    def from_crawled(
-        cls: type[SubmissionT],
-        crawled_submission: CrawledSubmission,
-    ) -> SubmissionT:
-        return cls(
-            **crawled_submission.model_dump(),
-            first_seen_at=current_datetime(),
-        )
+    # A URL pointing to a raw text file with the submission source code.
+    raw_code_url: HttpUrl | None = None
