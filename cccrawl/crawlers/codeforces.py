@@ -87,7 +87,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
         return Submission.from_crawled(crawled_submission, raw_code_url=raw_code_url)
 
     @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
-    @ratelimit(calls=1, every=1)
+    @ratelimit(calls=3, every=1)
     async def _get_submission_page(self, submission_url: HttpUrl) -> Response:
         return await self._toolkit.client.get(
             str(submission_url),
@@ -95,7 +95,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
         )
 
     @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
-    @ratelimit(calls=1, every=1)
+    @ratelimit(calls=3, every=1)
     async def _get_user_submissions(self, handle: str) -> Response:
         url = "https://codeforces.com/api/user.status"
         return await self._toolkit.client.get(url, params={"handle": handle, "from": 1})
