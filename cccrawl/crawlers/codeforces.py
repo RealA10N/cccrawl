@@ -55,7 +55,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
     @ratelimit(calls=1, every=1)
     async def _get_user_submissions(self, handle: str) -> Response:
         url = "https://codeforces.com/api/user.status"
-        return await self._client.get(url, params={"handle": handle, "from": 1})
+        return await self._toolkit.client.get(url, params={"handle": handle, "from": 1})
 
     @classmethod
     def _get_contest_id(cls, problem: dict[str, Any]) -> int:

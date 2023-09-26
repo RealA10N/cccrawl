@@ -47,4 +47,4 @@ class CsesCrawler(Crawler[CsesIntegration]):
     @ratelimit(calls=1, every=8)
     async def _get_user_profile(self, user_number: int) -> Response:
         url = f"https://cses.fi/problemset/user/{user_number}/"
-        return await self._client.get(url)
+        return await self._toolkit.client.get(url)

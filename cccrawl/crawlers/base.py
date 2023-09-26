@@ -3,8 +3,7 @@ from collections.abc import AsyncIterable
 from logging import getLogger
 from typing import Any, Coroutine, Generic, TypeAlias, TypeVar
 
-from httpx import AsyncClient
-
+from cccrawl.crawlers.toolkit import CrawlerToolkit
 from cccrawl.models.integration import Integration
 from cccrawl.models.submission import CrawledSubmission, Submission
 
@@ -14,8 +13,8 @@ logger = getLogger(__name__)
 
 
 class Crawler(ABC, Generic[IntegrationT]):
-    def __init__(self, client: AsyncClient) -> None:
-        self._client = client
+    def __init__(self, toolkit: CrawlerToolkit) -> None:
+        self._toolkit = toolkit
 
     @abstractmethod
     def crawl(self, integration: IntegrationT) -> AsyncIterable[CrawledSubmission]:
