@@ -6,6 +6,7 @@ from pydantic import AwareDatetime, HttpUrl, computed_field
 from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
 from cccrawl.models.problem import Problem
+from cccrawl.utils import current_datetime
 
 
 class SubmissionVerdict(CCBaseStrEnum):
@@ -67,3 +68,13 @@ class Submission(CrawledSubmission):
 
     # A URL pointing to a raw text file with the submission source code.
     raw_code_url: HttpUrl | None = None
+
+    @classmethod
+    def from_crawled(
+        cls: type[SubmissionT],
+        crawled_submission: CrawledSubmission,
+    ) -> SubmissionT:
+        return cls(
+            **crawled_submission.model_dump(),
+            first_seen_at=current_datetime(),
+        )
