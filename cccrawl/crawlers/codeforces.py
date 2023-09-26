@@ -69,7 +69,7 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
             # publicly available.
             return Submission.from_crawled(crawled_submission)
 
-        soup = BeautifulSoup(response.text)
+        soup = BeautifulSoup(response.text, "lxml")
         code_block = soup.find("pre", id="program-source-text")
 
         if code_block is None:
