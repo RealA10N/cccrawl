@@ -5,17 +5,14 @@ from typing import Any
 
 import backoff
 from httpx import HTTPError, Response
-from pydantic import HttpUrl, computed_field, constr
+from pydantic import HttpUrl
 
 from cccrawl.crawlers.base import Crawler
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.integrations.codeforces import CodeforcesIntegration
 from cccrawl.models.any_integration import AnyIntegration
-from cccrawl.models.base import ModelId
-from cccrawl.models.integration import Integration, Platform
 from cccrawl.models.problem import Problem
 from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
-from cccrawl.models.user import UserConfig
 from cccrawl.utils.ratelimit import ratelimit
 
 logger = getLogger(__name__)
