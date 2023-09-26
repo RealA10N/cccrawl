@@ -73,8 +73,10 @@ class Submission(CrawledSubmission):
     def from_crawled(
         cls: type[SubmissionT],
         crawled_submission: CrawledSubmission,
+        **additional_kwargs,
     ) -> SubmissionT:
         return cls(
             **crawled_submission.model_dump(),
             first_seen_at=current_datetime(),
+            **additional_kwargs,
         )
