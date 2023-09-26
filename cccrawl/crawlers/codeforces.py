@@ -1,18 +1,22 @@
+import html
 from collections.abc import AsyncIterable
 from datetime import datetime, timezone
+from io import StringIO
 from logging import getLogger
 from typing import Any
 
 import backoff
+from bs4 import BeautifulSoup
 from httpx import HTTPError, Response
 from pydantic import HttpUrl
 
 from cccrawl.crawlers.base import Crawler
 from cccrawl.crawlers.error import CrawlerError
+from cccrawl.files.base import FileUploadError
 from cccrawl.integrations.codeforces import CodeforcesIntegration
 from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.problem import Problem
-from cccrawl.models.submission import CrawledSubmission, SubmissionVerdict
+from cccrawl.models.submission import CrawledSubmission, Submission, SubmissionVerdict
 from cccrawl.utils.ratelimit import ratelimit
 
 logger = getLogger(__name__)
@@ -50,6 +54,45 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
                 ),
                 submission_url=self._get_submission_url(submission=sub),
             )
+
+    async def finalize_new_submission(
+        self, crawled_submission: CrawledSubmission
+    ) -> Submission:
+        if crawled_submission.submission_url is None:
+            return Submission.from_crawled(crawled_submission)
+
+        response = await self._get_submission_page(crawled_submission.submission_url)
+        if response.status_code != 200:
+            # Codeforces does not allow to view the submission page for all
+            # submissions at any time. For example, submission may be part of a
+            # contest that is still running. Submissions to gyms are also not
+            # publicly available.
+            return Submission.from_crawled(crawled_submission)
+
+        soup = BeautifulSoup(response.text)
+        code_block = soup.find("pre", id="program-source-text")
+
+        if code_block is None:
+            raise CrawlerError(
+                f"Can't locate source code of submission {crawled_submission.submission_url}"
+            )
+
+        code = html.unescape(code_block.text)
+
+        try:
+            raw_code_url = await self._toolkit.file_uploader.upload(StringIO(code))
+        except FileUploadError:
+            return Submission.from_crawled(crawled_submission)
+
+        return Submission.from_crawled(crawled_submission, raw_code_url=raw_code_url)
+
+    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
+    @ratelimit(calls=1, every=1)
+    async def _get_submission_page(self, submission_url: HttpUrl) -> Response:
+        return await self._toolkit.client.get(
+            str(submission_url),
+            follow_redirects=False,
+        )
 
     @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
     @ratelimit(calls=1, every=1)

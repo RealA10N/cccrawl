@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterable
 from logging import getLogger
-from typing import Any, Coroutine, Generic, TypeAlias, TypeVar
+from typing import Any, Generic, TypeAlias, TypeVar
 
 from cccrawl.crawlers.toolkit import CrawlerToolkit
 from cccrawl.models.integration import Integration
@@ -30,7 +30,7 @@ class Crawler(ABC, Generic[IntegrationT]):
     @abstractmethod
     async def finalize_new_submission(
         self, crawled_submission: CrawledSubmission
-    ) -> Coroutine[Submission, None, None]:
+    ) -> Submission:
         """Provided a new crawled submission with only partial data available,
         this method should crawl additional data that is considered 'expensive',
         and convert it into a full 'Submission' instance.
