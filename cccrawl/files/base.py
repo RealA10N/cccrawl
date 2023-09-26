@@ -12,3 +12,8 @@ class FileUploadService(ABC):
     async def upload(self, content: TextIO) -> HttpUrl:
         """Upload the provided file content to a publicly available file
         hosting service, and return the URL of the uploaded file."""
+
+
+class FileUploadError(Exception):
+    """Raised the FileUploadService.upload() method when a problem occurs
+    while uploading a file."""

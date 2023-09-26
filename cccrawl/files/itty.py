@@ -1,9 +1,9 @@
 from typing import TextIO
 
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPStatusError
 from pydantic import HttpUrl
 
-from cccrawl.files.base import FileUploadService
+from cccrawl.files.base import FileUploadError, FileUploadService
 
 
 class IttyUploadService(FileUploadService):
@@ -14,6 +14,11 @@ class IttyUploadService(FileUploadService):
                 params={"ttl": "30years"},
                 json=content.read(),
             )
-        response.raise_for_status()
+
+        try:
+            response.raise_for_status()
+        except HTTPStatusError:
+            raise FileUploadError()
+
         url: str = response.json()["url"]
         return HttpUrl(url)
