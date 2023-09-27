@@ -8,16 +8,20 @@ from cccrawl.models.integration import Integration
 from cccrawl.models.submission import CrawledSubmission, Submission
 
 IntegrationT = TypeVar("IntegrationT", bound=Integration)
+CrawledSubmissionT = TypeVar("CrawledSubmissionT", bound=CrawledSubmission)
+SubmissionT = TypeVar("SubmissionT", bound=Submission)
 
 logger = getLogger(__name__)
 
 
-class Crawler(ABC, Generic[IntegrationT]):
+class Crawler(ABC, Generic[IntegrationT, CrawledSubmissionT, SubmissionT]):
     def __init__(self, toolkit: CrawlerToolkit) -> None:
         self._toolkit = toolkit
 
     @abstractmethod
-    def crawl(self, integration: IntegrationT) -> AsyncIterable[CrawledSubmission]:
+    async def crawl(
+        self, integration: IntegrationT
+    ) -> AsyncIterable[CrawledSubmissionT]:
         """Provided an integration, this method should crawl a subset of the
         integration, in which it is guaranteed that all new submissions appear
         in such subset. In particular, it is OK to crawl submissions that have
@@ -29,8 +33,8 @@ class Crawler(ABC, Generic[IntegrationT]):
 
     @abstractmethod
     async def finalize_new_submission(
-        self, crawled_submission: CrawledSubmission
-    ) -> Submission:
+        self, crawled_submission: CrawledSubmissionT
+    ) -> SubmissionT:
         """Provided a new crawled submission with only partial data available,
         this method should crawl additional data that is considered 'expensive',
         and convert it into a full 'Submission' instance.
@@ -40,4 +44,4 @@ class Crawler(ABC, Generic[IntegrationT]):
         CodeCoach-managed database."""
 
 
-AnyCrawler: TypeAlias = Crawler[Any]
+AnyCrawler: TypeAlias = Crawler[Any, Any, Any]
