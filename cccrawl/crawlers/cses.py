@@ -58,7 +58,7 @@ class CsesCrawledSubmission(CrawledSubmission[CsesIntegration]):
         )
 
 
-class CsesSubmission(Submission[CsesIntegration]):
+class CsesSubmission(Submission[CsesIntegration], CsesCrawledSubmission):
     pass
 
 
