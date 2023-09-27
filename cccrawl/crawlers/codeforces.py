@@ -40,7 +40,9 @@ class CodeforcesCrawledSubmission(CrawledSubmission[CodeforcesIntegration]):
         )
 
 
-class CodeforcesSubmission(Submission[CodeforcesIntegration]):
+class CodeforcesSubmission(
+    Submission[CodeforcesIntegration], CodeforcesCrawledSubmission
+):
     pass
 
 
