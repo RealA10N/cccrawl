@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterable
+from datetime import datetime, timezone
 from logging import getLogger
 from typing import NamedTuple
 
@@ -6,7 +7,7 @@ import backoff
 import bs4
 from bs4 import BeautifulSoup
 from httpx import HTTPError, Response
-from pydantic import HttpUrl, computed_field
+from pydantic import AwareDatetime, HttpUrl, computed_field
 
 from cccrawl.crawlers.base import Crawler
 from cccrawl.crawlers.error import CrawlerError
@@ -241,3 +242,16 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
         if not isinstance(content, bs4.Tag):
             raise CrawlerError("Can't find content tag of hacking page")
         return content
+
+    @classmethod
+    def _get_submission_time_from_hacking_metadata_table(
+        cls,
+        table: bs4.Tag,
+    ) -> AwareDatetime:
+        date_cell = table.find("td")
+        if not isinstance(date_cell, bs4.Tag):
+            raise CrawlerError("Hacking metadata table appears to be empty")
+        submitted_at = datetime.strptime(date_cell.text, "%Y-%m-%d %H:%M:%S")
+        # The datetime is returns in the timezone of the client.
+        # we want to convert it to UTC.
+        return submitted_at.astimezone(timezone.utc)
