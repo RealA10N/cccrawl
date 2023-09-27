@@ -8,8 +8,8 @@ from cccrawl.models.integration import Integration, Platform
 
 class CsesIntegration(Integration):
     platform: Literal[Platform.cses] = Platform.cses
-    handle: str = constr(min_length=1, max_length=16, strip_whitespace=True)  # type: ignore
-    user_number: int = conint(strict=True, gt=0, le=10_000_000)  # type: ignore
+    handle: str = constr(min_length=1, max_length=16, strip_whitespace=True)  # type: ignore[assignment]
+    user_number: int = conint(strict=True, gt=0, le=10_000_000)  # type: ignore[assignment]
 
     @computed_field  # type: ignore[misc]
     @property
