@@ -141,17 +141,18 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
 
         response = await self._toolkit.client.get(hacking_list_url)
         response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, "lxml")
-        content = soup.find("div", {"class": "content"})
-        if not content:  # content tag is expected in all cases
-            raise CrawlerError("Can't find content tag of hacking page")
+        content = self._get_cses_page_content(response)
 
         table = content.find("table")
         if not isinstance(table, bs4.Tag):
             # Table not found if user not logged in (invalid credentials),
             # or the user did not solve the problem. In both cases we 'fail'
             # quietly, as if there are no submissions to the problem
+            if not self._check_if_logged_in(response):
+                logger.warning(
+                    "CSES Credentials provided, but crawling session is logged out. "
+                    "Credentials may be invalid OR sessions expired for some reason."
+                )
             return
 
         for row in table.find_all("tr"):
@@ -228,3 +229,11 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
     async def _get_user_profile(self, user_number: int) -> Response:
         url = f"https://cses.fi/problemset/user/{user_number}/"
         return await self._toolkit.client.get(url)
+
+    @classmethod
+    def _get_cses_page_content(cls, response: Response) -> bs4.Tag:
+        soup = BeautifulSoup(response.text, "lxml")
+        content = soup.find("div", {"class": "content"})
+        if not isinstance(content, bs4.Tag):
+            raise CrawlerError("Can't find content tag of hacking page")
+        return content
