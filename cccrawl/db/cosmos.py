@@ -8,6 +8,7 @@ from azure.cosmos.aio import CosmosClient
 
 from cccrawl.db.base import Database
 from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.base import ModelId
 from cccrawl.models.submission import Submission
 
 CosmosDatabaseT = TypeVar("CosmosDatabaseT", bound="CosmosDatabase")
@@ -63,12 +64,13 @@ class CosmosDatabase(Database):
         body = integration.root.model_dump(mode="json")
         await self._integrations_container.upsert_item(body=body)
 
-    async def get_submissions_by_integration(
+    async def get_collected_submission_ids(
         self, integration: AnyIntegration
-    ) -> AsyncIterable[Submission]:
-        integration_id = integration.root.id
-        query = f"SELECT * FROM c WHERE c.integration.id = '{integration_id}'"
-        results = self._submissions_container.query_items(query)
+    ) -> AsyncIterable[ModelId]:
+        results = self._submissions_container.query_items(
+            query="SELECT c.id FROM c WHERE c.integration.id = @integration_id",
+            parameters=[{"name": "@integration_id", "value": integration.root.id}],
+        )
 
         async for document in results:
-            yield Submission.model_validate(document)
+            yield ModelId(document["id"])
