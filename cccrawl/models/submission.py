@@ -2,10 +2,10 @@ from abc import ABC
 from enum import auto
 from typing import TypeVar
 
-from pydantic import AwareDatetime, HttpUrl, computed_field
+from pydantic import AwareDatetime, HttpUrl
 
 from cccrawl.models.any_integration import AnyIntegration
-from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
 from cccrawl.models.problem import Problem
 from cccrawl.utils import current_datetime
 
