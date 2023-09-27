@@ -7,9 +7,9 @@ from cccrawl.models.integration import Integration, Platform
 
 
 class CsesIntegration(Integration):
-    platform: Literal[Platform.cses]
-    handle: constr(min_length=1, max_length=16, strip_whitespace=True)  # type: ignore[valid-type]
-    user_number: conint(strict=True, gt=0, le=10_000_000)  # type: ignore[valid-type]
+    platform: Literal[Platform.cses] = Platform.cses
+    handle: str = constr(min_length=1, max_length=16, strip_whitespace=True)  # type: ignore
+    user_number: int = conint(strict=True, gt=0, le=10_000_000)  # type: ignore
 
     @computed_field  # type: ignore[misc]
     @property
