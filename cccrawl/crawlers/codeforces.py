@@ -8,13 +8,13 @@ from typing import Any
 import backoff
 from bs4 import BeautifulSoup
 from httpx import HTTPError, Response
-from pydantic import HttpUrl
+from pydantic import AwareDatetime, HttpUrl, computed_field
 
 from cccrawl.crawlers.base import Crawler
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.files.base import FileUploadError
 from cccrawl.integrations.codeforces import CodeforcesIntegration
-from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.base import ModelId
 from cccrawl.models.problem import Problem
 from cccrawl.models.submission import CrawledSubmission, Submission, SubmissionVerdict
 from cccrawl.utils.ratelimit import ratelimit
@@ -22,10 +22,38 @@ from cccrawl.utils.ratelimit import ratelimit
 logger = getLogger(__name__)
 
 
-class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
+class CodeforcesCrawledSubmission(CrawledSubmission[CodeforcesIntegration]):
+    submitted_at: AwareDatetime
+    submission_url: HttpUrl
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def id(self) -> ModelId:
+        return ModelId(
+            self._hash_tokens(
+                self.integration,
+                self.problem,
+                self.verdict,
+                str(self.submitted_at),
+                str(self.submission_url),
+            )
+        )
+
+
+class CodeforcesSubmission(Submission[CodeforcesIntegration]):
+    pass
+
+
+class CodeforcesCrawler(
+    Crawler[
+        CodeforcesIntegration,
+        CodeforcesCrawledSubmission,
+        CodeforcesSubmission,
+    ]
+):
     async def crawl(
         self, integration: CodeforcesIntegration
-    ) -> AsyncIterable[CrawledSubmission]:
+    ) -> AsyncIterable[CodeforcesCrawledSubmission]:
         if (handle := integration.handle) is None:
             logger.info("No available Codeforces user, skipping.")
             return
@@ -33,16 +61,15 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
         response = await self._get_user_submissions(handle)
         if response.status_code == 400:
             raise CrawlerError(
-                "Can not crawl Codeforces user '%s': %s",
-                handle,
-                str(response.content),
+                f"Can not crawl Codeforces user '{handle}'.",
+                response.text,
             )
         response.raise_for_status()
 
         submissions = response.json().get("result", [])
         for sub in submissions:
-            yield CrawledSubmission(
-                integration=AnyIntegration(root=integration),
+            yield CodeforcesCrawledSubmission(
+                integration=integration,
                 problem=Problem(problem_url=self._get_problem_url(sub["problem"])),
                 verdict=(
                     SubmissionVerdict.accepted
@@ -56,25 +83,23 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
             )
 
     async def finalize_new_submission(
-        self, crawled_submission: CrawledSubmission
-    ) -> Submission:
-        if crawled_submission.submission_url is None:
-            return Submission.from_crawled(crawled_submission)
-
+        self, crawled_submission: CodeforcesCrawledSubmission
+    ) -> CodeforcesSubmission:
         response = await self._get_submission_page(crawled_submission.submission_url)
         if response.status_code != 200:
             # Codeforces does not allow to view the submission page for all
             # submissions at any time. For example, submission may be part of a
             # contest that is still running. Submissions to gyms are also not
             # publicly available.
-            return Submission.from_crawled(crawled_submission)
+            return CodeforcesSubmission.from_crawled(crawled_submission)
 
         soup = BeautifulSoup(response.text, "lxml")
         code_block = soup.find("pre", id="program-source-text")
 
         if code_block is None:
             raise CrawlerError(
-                f"Can't locate source code of submission {crawled_submission.submission_url}"
+                "Can't locate source code of submission "
+                f"{crawled_submission.submission_url}"
             )
 
         code = html.unescape(code_block.text)
@@ -82,9 +107,11 @@ class CodeforcesCrawler(Crawler[CodeforcesIntegration]):
         try:
             raw_code_url = await self._toolkit.file_uploader.upload(StringIO(code))
         except FileUploadError:
-            return Submission.from_crawled(crawled_submission)
+            return CodeforcesSubmission.from_crawled(crawled_submission)
 
-        return Submission.from_crawled(crawled_submission, raw_code_url=raw_code_url)
+        return CodeforcesSubmission.from_crawled(
+            crawled_submission, raw_code_url=raw_code_url
+        )
 
     @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
     @ratelimit(calls=3, every=1)

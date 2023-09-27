@@ -19,9 +19,7 @@ class Crawler(ABC, Generic[IntegrationT, CrawledSubmissionT, SubmissionT]):
         self._toolkit = toolkit
 
     @abstractmethod
-    async def crawl(
-        self, integration: IntegrationT
-    ) -> AsyncIterable[CrawledSubmissionT]:
+    def crawl(self, integration: IntegrationT) -> AsyncIterable[CrawledSubmissionT]:
         """Provided an integration, this method should crawl a subset of the
         integration, in which it is guaranteed that all new submissions appear
         in such subset. In particular, it is OK to crawl submissions that have
