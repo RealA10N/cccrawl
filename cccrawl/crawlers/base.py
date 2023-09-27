@@ -18,6 +18,11 @@ class Crawler(ABC, Generic[IntegrationT, CrawledSubmissionT, SubmissionT]):
     def __init__(self, toolkit: CrawlerToolkit) -> None:
         self._toolkit = toolkit
 
+    async def load(self) -> None:
+        """An ASYNC alternative to __init__. Will called (awaited) once, at
+        startup of the program, after initialization of an instance but before
+        the crawling starts."""
+
     @abstractmethod
     def crawl(self, integration: IntegrationT) -> AsyncIterable[CrawledSubmissionT]:
         """Provided an integration, this method should crawl a subset of the

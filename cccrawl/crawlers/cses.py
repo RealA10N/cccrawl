@@ -75,6 +75,10 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
                 "Credentials not provided for CSES crawler, functionality limited"
             )
 
+    async def load(self) -> None:
+        if self._credentials:
+            await self._preform_session_login(self._credentials)
+
     async def crawl(
         self, integration: CsesIntegration
     ) -> AsyncIterable[CsesCrawledSubmission]:
