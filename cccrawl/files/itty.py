@@ -23,8 +23,8 @@ class IttyUploadService(FileUploadService):
 
         try:
             response.raise_for_status()
-        except HTTPStatusError:
-            raise FileUploadError()
+        except HTTPStatusError as exception:
+            raise FileUploadError() from exception
 
         url: str = response.json()["url"]
         return HttpUrl(url)
