@@ -1,13 +1,16 @@
 from abc import ABC
 from enum import auto
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import AwareDatetime, HttpUrl
 
-from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
+from cccrawl.models.integration import Integration
 from cccrawl.models.problem import Problem
 from cccrawl.utils import current_datetime
+
+SubmissionT = TypeVar("SubmissionT", bound="Submission")
+IntegrationT = TypeVar("IntegrationT", bound=Integration)
 
 
 class SubmissionVerdict(CCBaseStrEnum):
@@ -20,19 +23,16 @@ class SubmissionVerdict(CCBaseStrEnum):
     rejected = auto()
 
 
-class CrawledSubmission(ABC, CCBaseModel):
+class CrawledSubmission(ABC, CCBaseModel, Generic[IntegrationT]):
     """A model that describes a single submission, where all information can
     and should be provided in a single scrape."""
 
-    integration: AnyIntegration
+    integration: IntegrationT
     problem: Problem
     verdict: SubmissionVerdict
 
 
-SubmissionT = TypeVar("SubmissionT", bound="Submission")
-
-
-class Submission(CrawledSubmission):
+class Submission(CrawledSubmission[IntegrationT], Generic[IntegrationT]):
     """A model that describes a single submission fully. This model expends the
     'crawled' submission model with information about the submission that
     require some context and can not be obtained in a single scrape."""
