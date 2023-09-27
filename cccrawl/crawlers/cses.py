@@ -1,5 +1,7 @@
+import html
 from collections.abc import AsyncIterable
 from datetime import datetime, timezone
+from io import StringIO
 from logging import getLogger
 from typing import NamedTuple
 
@@ -12,6 +14,7 @@ from pydantic import AwareDatetime, HttpUrl, computed_field
 from cccrawl.crawlers.base import Crawler
 from cccrawl.crawlers.error import CrawlerError
 from cccrawl.crawlers.toolkit import CrawlerToolkit
+from cccrawl.files.base import FileUploadError
 from cccrawl.integrations.cses import CsesIntegration
 from cccrawl.models.base import ModelId
 from cccrawl.models.problem import Problem
@@ -182,7 +185,21 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
         crawled_submission: CsesCrawledSubmission,
         hackable_submission: HackableSubmissionDescriptor,
     ) -> CsesSubmission:
-        raise NotImplementedError()
+        hacking_url = str(hackable_submission.submission_url)
+        response = await self._toolkit.client.get(hacking_url)
+        response.raise_for_status()
+
+        content = self._get_cses_page_content(response)
+        table = content.find("table")
+        if not isinstance(table, bs4.Tag):
+            raise CrawlerError("Hacking metadata table not found")
+
+        return CsesSubmission.from_crawled(
+            crawled_submission,
+            submission_url=hacking_url,
+            submitted_at=self._get_submission_time_from_hacking_metadata_table(table),
+            raw_code_url=await self._upload_source_code_from_hacking_content(content),
+        )
 
     @staticmethod
     def _check_if_logged_in(response: Response) -> bool:
@@ -255,3 +272,17 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
         # The datetime is returns in the timezone of the client.
         # we want to convert it to UTC.
         return submitted_at.astimezone(timezone.utc)
+
+    async def _upload_source_code_from_hacking_content(
+        self, content: bs4.Tag
+    ) -> HttpUrl | None:
+        code_block = content.find("pre", {"class": "prettyprint"})
+        if not isinstance(code_block, bs4.Tag):
+            raise CrawlerError("Submission source code block not found on hacking page")
+
+        code = html.unescape(code_block.text)
+        try:
+            return await self._toolkit.file_uploader.upload(StringIO(code))
+        except FileUploadError:
+            logger.warning("Failed to upload submission source code")
+            return None
