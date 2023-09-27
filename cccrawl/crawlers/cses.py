@@ -119,7 +119,7 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
                 hackable_submission.submission_username
                 == crawled_submission.integration.handle
             ):
-                return self._finalize_submission_from_hackpage(
+                return await self._finalize_submission_from_hackpage(
                     crawled_submission,
                     hackable_submission,
                 )
@@ -172,7 +172,7 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
                 ),
             )
 
-    def _finalize_submission_from_hackpage(
+    async def _finalize_submission_from_hackpage(
         self,
         crawled_submission: CsesCrawledSubmission,
         hackable_submission: HackableSubmissionDescriptor,
