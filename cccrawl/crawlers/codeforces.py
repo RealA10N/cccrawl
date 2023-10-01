@@ -66,6 +66,10 @@ class CodeforcesCrawler(
         CodeforcesSubmission,
     ]
 ):
+    @property
+    def submission_model(self) -> type[CodeforcesSubmission]:
+        return CodeforcesSubmission
+
     async def crawl(
         self, integration: CodeforcesIntegration
     ) -> AsyncIterable[CodeforcesCrawledSubmission]:
