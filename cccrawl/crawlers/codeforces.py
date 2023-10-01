@@ -22,8 +22,9 @@ from cccrawl.models.submission import CrawledSubmission, Submission, SubmissionV
 logger = getLogger(__name__)
 
 
-codeforces_limits = AsyncLimiter(limit=5, every=5)
-backoff_on_exception = backoff.on_exception(backoff.expo, HTTPError, max_time=120)
+codeforces_api_limits = AsyncLimiter(limit=3, every=3)
+codeforces_html_limits = AsyncLimiter(limit=2, every=10)
+backoff_on_exception = backoff.on_exception(backoff.expo, HTTPError, max_time=300)
 
 
 class CodeforcesCrawledSubmission(CrawledSubmission[CodeforcesIntegration]):
@@ -113,7 +114,7 @@ class CodeforcesCrawler(
             crawled_submission, raw_code_url=raw_code_url
         )
 
-    @codeforces_limits
+    @codeforces_html_limits
     @backoff_on_exception
     async def _get_submission_page(self, submission_url: HttpUrl) -> Response:
         response = await self._toolkit.client.get(
@@ -125,7 +126,7 @@ class CodeforcesCrawler(
             response.raise_for_status()
         return response
 
-    @codeforces_limits
+    @codeforces_api_limits
     @backoff_on_exception
     async def _get_user_submissions(self, handle: str) -> Response:
         url = "https://codeforces.com/api/user.status"
