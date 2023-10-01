@@ -40,7 +40,9 @@ class MainCrawler:
     ) -> None:
         new_submissions_gen = self.crawl_integration_new_submissions(integration)
         crawler = self._get_crawler_for_integration(integration)
-        integration.root.update_last_fetched()
+
+        is_first_scan = integration.root.last_fetch is None
+        integration.root.update_last_fetched()  # update now to show time of start of crawling
 
         async with TaskGroup() as tg:
             async for crawled_submission in new_submissions_gen:
@@ -48,6 +50,7 @@ class MainCrawler:
                     self._finalize_submission_and_update_db(
                         crawler,
                         crawled_submission,
+                        is_first_scan,
                     )
                 )
 
@@ -78,6 +81,18 @@ class MainCrawler:
         self,
         crawler: AnyCrawler,
         crawled_submission: CrawledSubmission,
+        is_first_scan: bool,
     ) -> None:
-        finalized_submission = await crawler.finalize_new_submission(crawled_submission)
+        if is_first_scan:
+            # If first scan of integration, we do not finalize submissions,
+            # since that can be very expensive. Instead we convert them to
+            # regular submission instances and upload the result to the DB.
+            finalized_submission = crawler.submission_model.from_crawled(
+                crawled_submission
+            )
+        else:
+            # If not first scan, finalize submission as usual.
+            finalized_submission = await crawler.finalize_new_submission(
+                crawled_submission
+            )
         await self._db.upsert_submission(finalized_submission)

@@ -86,6 +86,10 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
         if self._credentials:
             await self._preform_session_login(self._credentials)
 
+    @property
+    def submission_model(self) -> type[CsesSubmission]:
+        return CsesSubmission
+
     async def crawl(
         self, integration: CsesIntegration
     ) -> AsyncIterable[CsesCrawledSubmission]:

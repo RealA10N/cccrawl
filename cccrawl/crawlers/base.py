@@ -46,5 +46,10 @@ class Crawler(ABC, Generic[IntegrationT, CrawledSubmissionT, SubmissionT]):
         like for example, copying the source code of the submission into a
         CodeCoach-managed database."""
 
+    @property
+    @abstractmethod
+    def submission_model(self) -> type[SubmissionT]:
+        """Returns the submission type that the crawler supports."""
+
 
 AnyCrawler: TypeAlias = Crawler[Any, Any, Any]
