@@ -1,4 +1,4 @@
-pydantic[email]>=2.0
+pydantic[email]>=2.4
 httpx
 beautifulsoup4
 lxml
