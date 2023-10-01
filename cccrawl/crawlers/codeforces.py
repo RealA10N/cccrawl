@@ -8,6 +8,7 @@ from typing import Any
 import backoff
 from bs4 import BeautifulSoup
 from httpx import HTTPError, Response
+from limited import AsyncLimiter
 from pydantic import AwareDatetime, HttpUrl, computed_field
 
 from cccrawl.crawlers.base import Crawler
@@ -17,9 +18,12 @@ from cccrawl.integrations.codeforces import CodeforcesIntegration
 from cccrawl.models.base import ModelId
 from cccrawl.models.problem import Problem
 from cccrawl.models.submission import CrawledSubmission, Submission, SubmissionVerdict
-from cccrawl.utils.ratelimit import ratelimit
 
 logger = getLogger(__name__)
+
+
+codeforces_limits = AsyncLimiter(limit=5, every=5)
+backoff_on_exception = backoff.on_exception(backoff.expo, HTTPError, max_time=120)
 
 
 class CodeforcesCrawledSubmission(CrawledSubmission[CodeforcesIntegration]):
@@ -61,12 +65,6 @@ class CodeforcesCrawler(
             return
 
         response = await self._get_user_submissions(handle)
-        if response.status_code == 400:
-            raise CrawlerError(
-                f"Can not crawl Codeforces user '{handle}'.",
-                response.text,
-            )
-        response.raise_for_status()
 
         submissions = response.json().get("result", [])
         for sub in submissions:
@@ -88,11 +86,11 @@ class CodeforcesCrawler(
         self, crawled_submission: CodeforcesCrawledSubmission
     ) -> CodeforcesSubmission:
         response = await self._get_submission_page(crawled_submission.submission_url)
-        if response.status_code != 200:
+        if response.status_code == 302:
             # Codeforces does not allow to view the submission page for all
             # submissions at any time. For example, submission may be part of a
             # contest that is still running. Submissions to gyms are also not
-            # publicly available.
+            # publicly available. We get redirected to home page in that case (302).
             return CodeforcesSubmission.from_crawled(crawled_submission)
 
         soup = BeautifulSoup(response.text, "lxml")
@@ -115,19 +113,33 @@ class CodeforcesCrawler(
             crawled_submission, raw_code_url=raw_code_url
         )
 
-    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
-    @ratelimit(calls=3, every=1)
+    @codeforces_limits
+    @backoff_on_exception
     async def _get_submission_page(self, submission_url: HttpUrl) -> Response:
-        return await self._toolkit.client.get(
+        response = await self._toolkit.client.get(
             str(submission_url),
             follow_redirects=False,
         )
+        if response.status_code != 302:
+            # Allow redirection when submission page not public.
+            response.raise_for_status()
+        return response
 
-    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
-    @ratelimit(calls=3, every=1)
+    @codeforces_limits
+    @backoff_on_exception
     async def _get_user_submissions(self, handle: str) -> Response:
         url = "https://codeforces.com/api/user.status"
-        return await self._toolkit.client.get(url, params={"handle": handle, "from": 1})
+        response = await self._toolkit.client.get(
+            url, params={"handle": handle, "from": 1}
+        )
+        if response.status_code == 400:
+            raise CrawlerError(
+                f"Can not crawl Codeforces user '{handle}'.",
+                response.text,
+            )
+
+        response.raise_for_status()
+        return response
 
     @classmethod
     def _get_contest_id(cls, problem: dict[str, Any]) -> int:

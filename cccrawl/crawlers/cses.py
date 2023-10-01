@@ -9,6 +9,7 @@ import backoff
 import bs4
 from bs4 import BeautifulSoup
 from httpx import HTTPError, Response
+from limited import AsyncLimiter
 from pydantic import AwareDatetime, HttpUrl, computed_field
 
 from cccrawl.crawlers.base import Crawler
@@ -19,9 +20,11 @@ from cccrawl.integrations.cses import CsesIntegration
 from cccrawl.models.base import ModelId
 from cccrawl.models.problem import Problem
 from cccrawl.models.submission import CrawledSubmission, Submission, SubmissionVerdict
-from cccrawl.utils.ratelimit import ratelimit
 
 logger = getLogger(__name__)
+
+cses_limiter = AsyncLimiter(limit=3, every=5)
+backoff_on_exception = backoff.on_exception(backoff.expo, HTTPError, max_time=120)
 
 
 class CsesCredentials(NamedTuple):
@@ -134,21 +137,18 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
 
         # If for some reason the submission wasn't found in the recent
         # submissions list, build submission from existing data only.
+        logger.info(
+            f"CSES Submission {crawled_submission.id} not found in hacking list."
+        )
         return CsesSubmission.from_crawled(crawled_submission)
 
-    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
     async def _get_hackable_submissions(
         self, problem: Problem
     ) -> AsyncIterable[HackableSubmissionDescriptor]:
         if not self._credentials:
             return  # credentials are required
 
-        problem_url_path = problem.problem_url.path or ""
-        _, task_id = problem_url_path.rsplit("/", 1)
-        hacking_list_url = f"https://cses.fi/problemset/hack/{task_id}/list/"
-
-        response = await self._toolkit.client.get(hacking_list_url)
-        response.raise_for_status()
+        response = await self._get_list_of_hackable_submissions_page(problem)
         content = self._get_cses_page_content(response)
 
         table = content.find("table")
@@ -185,10 +185,7 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
         crawled_submission: CsesCrawledSubmission,
         hackable_submission: HackableSubmissionDescriptor,
     ) -> CsesSubmission:
-        hacking_url = str(hackable_submission.submission_url)
-        response = await self._toolkit.client.get(hacking_url)
-        response.raise_for_status()
-
+        response = await self._get_hackable_submission_page(hackable_submission)
         content = self._get_cses_page_content(response)
         table = content.find("table")
         if not isinstance(table, bs4.Tag):
@@ -196,7 +193,7 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
 
         return CsesSubmission.from_crawled(
             crawled_submission,
-            submission_url=hacking_url,
+            submission_url=hackable_submission.submission_url,
             submitted_at=self._get_submission_time_from_hacking_metadata_table(table),
             raw_code_url=await self._upload_source_code_from_hacking_content(content),
         )
@@ -206,30 +203,16 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
         soup = BeautifulSoup(response.text)
         return soup.find("a", {"href": "/logout"}) is not None
 
-    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
     async def _preform_session_login(self, credentials: CsesCredentials) -> None:
-        csrf_token = await self.__get_login_csrf_token()
-
-        response = await self._toolkit.client.post(
-            "https://cses.fi/login",
-            data={
-                "csrf_token": csrf_token,
-                "nick": credentials.username,
-                "pass": credentials.password,
-            },
-            follow_redirects=False,
-        )
-
-        if response.status_code != 302:
-            raise CrawlerError(
-                f"CSES login failed with status code {response.status_code}.",
-                response.text,
-            )
+        csrf_token = await self._get_login_csrf_token()
+        await self._post_login_form(csrf_token, credentials)
 
         # PHP session now should be stored under the PHPSESSID cookie.
         assert "PHPSESSID" in self._toolkit.client.cookies
 
-    async def __get_login_csrf_token(self) -> str:
+    @cses_limiter
+    @backoff_on_exception
+    async def _get_login_csrf_token(self) -> str:
         response = await self._toolkit.client.get("https://cses.fi/login")
         response.raise_for_status()
 
@@ -246,11 +229,55 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
 
         return csrf_token
 
-    @backoff.on_exception(backoff.expo, HTTPError, max_time=120)
-    @ratelimit(calls=1, every=8)
+    @cses_limiter
+    @backoff_on_exception
+    async def _post_login_form(
+        self, csrf_token: str, credentials: CsesCredentials
+    ) -> None:
+        response = await self._toolkit.client.post(
+            "https://cses.fi/login",
+            data={
+                "csrf_token": csrf_token,
+                "nick": credentials.username,
+                "pass": credentials.password,
+            },
+            follow_redirects=False,
+        )
+
+        if response.status_code != 302:
+            raise CrawlerError(
+                f"CSES login failed with status code {response.status_code}.",
+                response.text,
+            )
+
+    @cses_limiter
+    @backoff_on_exception
     async def _get_user_profile(self, user_number: int) -> Response:
         url = f"https://cses.fi/problemset/user/{user_number}/"
         return await self._toolkit.client.get(url)
+
+    @cses_limiter
+    @backoff_on_exception
+    async def _get_list_of_hackable_submissions_page(
+        self, problem: Problem
+    ) -> Response:
+        problem_url_path = problem.problem_url.path or ""
+        _, task_id = problem_url_path.rsplit("/", 1)
+        hacking_list_url = f"https://cses.fi/problemset/hack/{task_id}/list/"
+
+        response = await self._toolkit.client.get(hacking_list_url)
+        response.raise_for_status()
+        return response
+
+    @cses_limiter
+    @backoff_on_exception
+    async def _get_hackable_submission_page(
+        self, submission: HackableSubmissionDescriptor
+    ) -> Response:
+        hacking_url = str(submission.submission_url)
+        response = await self._toolkit.client.get(hacking_url)
+        response.raise_for_status()
+        return response
 
     @classmethod
     def _get_cses_page_content(cls, response: Response) -> bs4.Tag:
