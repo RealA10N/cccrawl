@@ -1,13 +1,16 @@
+from abc import ABC
 from enum import auto
-from typing import TypeVar
+from typing import Generic, TypeVar
 
-from pydantic import AwareDatetime, Field, HttpUrl, computed_field
+from pydantic import AwareDatetime, HttpUrl
 
-from cccrawl.models.any_integration import AnyIntegration
-from cccrawl.models.base import CCBaseModel, CCBaseStrEnum, ModelId
+from cccrawl.models.base import CCBaseModel, CCBaseStrEnum
 from cccrawl.models.integration import Integration
 from cccrawl.models.problem import Problem
 from cccrawl.utils import current_datetime
+
+SubmissionT = TypeVar("SubmissionT", bound="Submission")
+IntegrationT = TypeVar("IntegrationT", bound=Integration)
 
 
 class SubmissionVerdict(CCBaseStrEnum):
@@ -20,13 +23,23 @@ class SubmissionVerdict(CCBaseStrEnum):
     rejected = auto()
 
 
-class CrawledSubmission(CCBaseModel):
+class CrawledSubmission(ABC, CCBaseModel, Generic[IntegrationT]):
     """A model that describes a single submission, where all information can
     and should be provided in a single scrape."""
 
-    integration: AnyIntegration
+    integration: IntegrationT
     problem: Problem
     verdict: SubmissionVerdict
+
+
+class Submission(CrawledSubmission[IntegrationT], Generic[IntegrationT]):
+    """A model that describes a single submission fully. This model expends the
+    'crawled' submission model with information about the submission that
+    require some context and can not be obtained in a single scrape."""
+
+    # The first time the scraper scraped the solution.
+    # Should not be changed between scrapes (constant value).
+    first_seen_at: AwareDatetime
 
     # The time in which the solution was submitted at. None if the judge does
     # not provide such information.
@@ -39,37 +52,14 @@ class CrawledSubmission(CCBaseModel):
     # A URL pointing to a raw text file with the submission source code.
     raw_code_url: HttpUrl | None = None
 
-    @computed_field  # type: ignore[misc]
-    @property
-    def id(self) -> ModelId:
-        return ModelId(
-            self._hash_tokens(
-                self.integration.root,
-                self.problem,
-                self.verdict,
-                str(self.submitted_at),
-            )
-        )
-
-
-SubmissionT = TypeVar("SubmissionT", bound="Submission")
-
-
-class Submission(CrawledSubmission):
-    """A model that describes a single submission fully. This model expends the
-    'crawled' submission model with information about the submission that
-    require some context and can not be obtained in a single scrape."""
-
-    # The first time the scraper scraped the solution.
-    # Should not be changed between scrapes (constant value).
-    first_seen_at: AwareDatetime
-
     @classmethod
     def from_crawled(
         cls: type[SubmissionT],
         crawled_submission: CrawledSubmission,
+        **additional_kwargs,
     ) -> SubmissionT:
         return cls(
             **crawled_submission.model_dump(),
             first_seen_at=current_datetime(),
+            **additional_kwargs,
         )

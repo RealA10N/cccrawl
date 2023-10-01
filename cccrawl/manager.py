@@ -1,65 +1,60 @@
-from collections.abc import AsyncIterable
+from asyncio import TaskGroup
+from collections.abc import AsyncIterable, Mapping
 from logging import getLogger
-from typing import Final
 
-from httpx import AsyncClient
-
-from cccrawl.crawlers import CodeforcesCrawler, CsesCrawler
 from cccrawl.crawlers.base import AnyCrawler
 from cccrawl.db.base import Database
 from cccrawl.models.any_integration import AnyIntegration
 from cccrawl.models.integration import Platform
-from cccrawl.models.submission import CrawledSubmission, Submission
+from cccrawl.models.submission import CrawledSubmission
 
 logger = getLogger(__name__)
 
-CRAWLER_PLATFORM_MAPPING: Final[dict[Platform, type[AnyCrawler]]] = {
-    Platform.codeforces: CodeforcesCrawler,
-    Platform.cses: CsesCrawler,
-}
-
-ALL_CRAWLERS = CRAWLER_PLATFORM_MAPPING.values()
-
 
 class MainCrawler:
-    def __init__(self, client: AsyncClient, db: Database) -> None:
+    def __init__(
+        self,
+        db: Database,
+        crawlers: Mapping[Platform, AnyCrawler],
+    ) -> None:
         self._db = db
-        self._crawlers: dict[Platform, AnyCrawler] = {
-            platform: crawler_cls(client)
-            for platform, crawler_cls in CRAWLER_PLATFORM_MAPPING.items()
-        }
+        self._crawlers = crawlers
 
-    async def crawl_integration(
+    async def crawl_integration_new_submissions(
         self, integration: AnyIntegration
     ) -> AsyncIterable[CrawledSubmission]:
-        submissions = self._crawlers[integration.root.platform].crawl(integration.root)
-        async for submission in submissions:
-            yield submission
+        """Yields all submissions that are new and do not appear in the database."""
 
-    async def crawl_integrations_new_submissions(
-        self, integration: AnyIntegration
-    ) -> AsyncIterable[Submission]:
         seen_ids = set()
-        old_submissions = self._db.get_submissions_by_integration(integration)
-        async for submission in old_submissions:
-            seen_ids.add(submission.id)
+        async for submission_id in self._db.get_collected_submission_ids(integration):
+            seen_ids.add(submission_id)
 
-        all_submissions = self.crawl_integration(integration)
-        async for crawled_submission in all_submissions:
+        crawler = self._get_crawler_for_integration(integration)
+
+        async for crawled_submission in crawler.crawl(integration.root):
             if crawled_submission.id not in seen_ids:
-                yield Submission.from_crawled(crawled_submission)
+                yield crawled_submission
 
     async def crawl_integration_and_update_db(
         self, integration: AnyIntegration
     ) -> None:
-        new_submissions = self.crawl_integrations_new_submissions(integration)
-        async for submission in new_submissions:
-            await self._db.upsert_submission(submission)
-
+        new_submissions_gen = self.crawl_integration_new_submissions(integration)
+        crawler = self._get_crawler_for_integration(integration)
         integration.root.update_last_fetched()
+
+        async with TaskGroup() as tg:
+            async for crawled_submission in new_submissions_gen:
+                tg.create_task(
+                    self._finalize_submission_and_update_db(
+                        crawler,
+                        crawled_submission,
+                    )
+                )
+
         await self._db.upsert_integration(integration)
 
     async def crawl(self) -> None:
+        await self._load_all_crawlers()
         integrations = self._db.generate_integrations()
         async for integration in integrations:
             try:
@@ -70,3 +65,19 @@ class MainCrawler:
                     integration,
                     exc_info=True,
                 )
+
+    async def _load_all_crawlers(self) -> None:
+        async with TaskGroup() as tg:
+            for crawler in self._crawlers.values():
+                tg.create_task(crawler.load())
+
+    def _get_crawler_for_integration(self, integration: AnyIntegration) -> AnyCrawler:
+        return self._crawlers[integration.root.platform]
+
+    async def _finalize_submission_and_update_db(
+        self,
+        crawler: AnyCrawler,
+        crawled_submission: CrawledSubmission,
+    ) -> None:
+        finalized_submission = await crawler.finalize_new_submission(crawled_submission)
+        await self._db.upsert_submission(finalized_submission)

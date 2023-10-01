@@ -3,24 +3,48 @@ from collections.abc import AsyncIterable
 from logging import getLogger
 from typing import Any, Generic, TypeAlias, TypeVar
 
-from httpx import AsyncClient
-
+from cccrawl.crawlers.toolkit import CrawlerToolkit
 from cccrawl.models.integration import Integration
-from cccrawl.models.submission import CrawledSubmission
+from cccrawl.models.submission import CrawledSubmission, Submission
 
 IntegrationT = TypeVar("IntegrationT", bound=Integration)
+CrawledSubmissionT = TypeVar("CrawledSubmissionT", bound=CrawledSubmission)
+SubmissionT = TypeVar("SubmissionT", bound=Submission)
 
 logger = getLogger(__name__)
 
 
-class Crawler(ABC, Generic[IntegrationT]):
-    def __init__(self, client: AsyncClient) -> None:
-        self._client = client
+class Crawler(ABC, Generic[IntegrationT, CrawledSubmissionT, SubmissionT]):
+    def __init__(self, toolkit: CrawlerToolkit) -> None:
+        self._toolkit = toolkit
+
+    async def load(self) -> None:
+        """An ASYNC alternative to __init__. Will called (awaited) once, at
+        startup of the program, after initialization of an instance but before
+        the crawling starts."""
 
     @abstractmethod
-    def crawl(self, integration: IntegrationT) -> AsyncIterable[CrawledSubmission]:
-        """Given the configuration of the user, returns a list of all
-        submissions of the user."""
+    def crawl(self, integration: IntegrationT) -> AsyncIterable[CrawledSubmissionT]:
+        """Provided an integration, this method should crawl a subset of the
+        integration, in which it is guaranteed that all new submissions appear
+        in such subset. In particular, it is OK to crawl submissions that have
+        already been seen before (that have been reported with previous calls
+        to the same function, or that are already stored in the database).
+        The implementation logic, of how to filter out new submissions and
+        query them is left for to the implementation of the specific platform
+        crawlers."""
+
+    @abstractmethod
+    async def finalize_new_submission(
+        self, crawled_submission: CrawledSubmissionT
+    ) -> SubmissionT:
+        """Provided a new crawled submission with only partial data available,
+        this method should crawl additional data that is considered 'expensive',
+        and convert it into a full 'Submission' instance.
+        Note: This method is called only once per submission, before it is
+        inserted into the database. It may leave traces and cause side effects,
+        like for example, copying the source code of the submission into a
+        CodeCoach-managed database."""
 
 
-AnyCrawler: TypeAlias = Crawler[Any]
+AnyCrawler: TypeAlias = Crawler[Any, Any, Any]

@@ -6,5 +6,5 @@ azure-cosmos
 azure-identity
 aiohttp
 python-dotenv
-yarl
 backoff>=2.2.1
+limited==0.1.0

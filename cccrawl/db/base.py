@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterable
 
 from cccrawl.models.any_integration import AnyIntegration
+from cccrawl.models.base import ModelId
 from cccrawl.models.submission import Submission
-from cccrawl.models.user import UserConfig
 
 
 class Database(ABC):
@@ -24,12 +24,12 @@ class Database(ABC):
     @abstractmethod
     async def upsert_submission(self, submission: Submission) -> None:
         """Insert a new submission to the database, or update an existing
-        submission entry if a submisson with the same unique id already exists
+        submission entry if a submission with the same unique id already exists
         in the database."""
 
     @abstractmethod
-    def get_submissions_by_integration(
+    def get_collected_submission_ids(
         self, integration: AnyIntegration
-    ) -> AsyncIterable[Submission]:
-        """Retrieve list of previously scraped submissions for the provided
-        integration."""
+    ) -> AsyncIterable[ModelId]:
+        """Retrieve IDs of all previously crawled submissions under the provided
+        integration. TODO: optimize."""

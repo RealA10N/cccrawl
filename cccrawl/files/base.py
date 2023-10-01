@@ -1,14 +1,19 @@
 from abc import ABC, abstractmethod
 from typing import TextIO
 
-from yarl import URL
+from pydantic import HttpUrl
 
 
 class FileUploadService(ABC):
     """An abstract implementation of a file upload service. Uploaded files
-    should be publicly avaliable."""
+    should be publicly available."""
 
     @abstractmethod
-    async def upload(self, content: TextIO) -> URL:
-        """Upload the provided file content to a publicly avaliable file
+    async def upload(self, content: TextIO) -> HttpUrl:
+        """Upload the provided file content to a publicly available file
         hosting service, and return the URL of the uploaded file."""
+
+
+class FileUploadError(Exception):
+    """Raised the FileUploadService.upload() method when a problem occurs
+    while uploading a file."""

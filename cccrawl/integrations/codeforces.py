@@ -7,8 +7,8 @@ from cccrawl.models.integration import Integration, Platform
 
 
 class CodeforcesIntegration(Integration):
-    platform: Literal[Platform.codeforces]
-    handle: constr(to_lower=True, min_length=3, max_length=30)  # type: ignore[valid-type]
+    platform: Literal[Platform.codeforces] = Platform.codeforces
+    handle: str = constr(to_lower=True, min_length=3, max_length=30)  # type: ignore[assignment]
 
     @computed_field  # type: ignore[misc]
     @property
