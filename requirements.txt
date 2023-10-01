@@ -7,3 +7,4 @@ azure-identity
 aiohttp
 python-dotenv
 backoff>=2.2.1
+limited==0.1.0

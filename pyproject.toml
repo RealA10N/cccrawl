@@ -1,5 +1,10 @@
+[project]
 name = "cccrawl"
 version = "0.1.0"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
 
 [tool.black]
 line-length = 88
