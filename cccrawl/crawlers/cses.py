@@ -127,8 +127,8 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
             crawled_submission.problem
         ):
             if (
-                hackable_submission.submission_username
-                == crawled_submission.integration.handle
+                hackable_submission.submission_username.casefold()
+                == crawled_submission.integration.handle.casefold()
             ):
                 return await self._finalize_submission_from_hackpage(
                     crawled_submission,
@@ -168,7 +168,7 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
             if not cols:
                 continue  # skip over header row(s)
 
-            submission_user = cols[1].text
+            submission_user = cols[1].text.strip()
             submission_path = cols[-1].find("a", href=True)["href"]
 
             yield HackableSubmissionDescriptor(
