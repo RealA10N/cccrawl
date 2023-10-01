@@ -23,8 +23,16 @@ logger = getLogger(__name__)
 
 
 codeforces_api_limits = AsyncLimiter(limit=3, every=3)
-codeforces_html_limits = AsyncLimiter(limit=2, every=10)
-backoff_on_exception = backoff.on_exception(backoff.expo, HTTPError, max_time=300)
+codeforces_html_limits = AsyncLimiter(limit=1, every=10)
+backoff_on_exception = backoff.on_exception(
+    # CODEFORCES is very strict. When getting 403, it takes a while (sometimes
+    # a couple of minutes) to return back to normal accepting state! We should
+    # avoid getting to the 'blocked' state as much as we can.
+    # backoff for: 15, 45, 135, ...
+    lambda: backoff.expo(factor=15, base=3),
+    HTTPError,
+    max_time=600,  # 10m
+)
 
 
 class CodeforcesCrawledSubmission(CrawledSubmission[CodeforcesIntegration]):
