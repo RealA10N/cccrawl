@@ -49,3 +49,5 @@ jobs:
           COSMOS_KEY=${{ secrets.COSMOS_KEY }}
           COSMOS_ENDPOINT=${{ secrets.COSMOS_ENDPOINT }}
           ENV_NAME=prod
+          CSES_USERNAME=${{ secrets.CSES_USERNAME }}
+          CSES_PASSWORD=${{ secrets.CSES_PASSWORD }}
