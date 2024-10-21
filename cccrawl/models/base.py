@@ -11,8 +11,7 @@ ModelId = NewType("ModelId", str)
 @runtime_checkable
 class HasId(Protocol):
     @property
-    def id(self) -> ModelId:
-        ...
+    def id(self) -> ModelId: ...
 
 
 class CCBaseModel(BaseModel):
