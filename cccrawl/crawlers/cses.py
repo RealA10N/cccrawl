@@ -111,9 +111,11 @@ class CsesCrawler(Crawler[CsesIntegration, CsesCrawledSubmission, CsesSubmission
             yield CsesCrawledSubmission(
                 integration=integration,
                 problem=Problem(problem_url="https://cses.fi" + a_tag["href"][:-1]),
-                verdict=SubmissionVerdict.accepted
-                if "full" in a_tag["class"]
-                else SubmissionVerdict.rejected,
+                verdict=(
+                    SubmissionVerdict.accepted
+                    if "full" in a_tag["class"]
+                    else SubmissionVerdict.rejected
+                ),
             )
 
     async def finalize_new_submission(
